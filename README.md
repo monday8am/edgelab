@@ -54,7 +54,9 @@ For full technical details see [`docs/architecture.md`](docs/architecture.md).
 
 ### Screenshots
 
-<img src="screenshots/screenshots.jpg" width="700" />
+<img src="screenshots/screenshot1.png" width="300" />
+<img src="screenshots/screenshot2.png" width="300" />
+<img src="screenshots/screenshot3.png" width="300" />
 
 ---
 
