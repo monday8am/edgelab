@@ -45,10 +45,12 @@ import androidx.compose.ui.unit.dp
 import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
 import com.monday8am.edgelab.presentation.liveride.ChatMessage
 import com.monday8am.edgelab.presentation.liveride.LiveRideAction
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun ChatPanel(
-    chatMessages: List<ChatMessage>,
+    chatMessages: ImmutableList<ChatMessage>,
     isChatExpanded: Boolean,
     isProcessing: Boolean,
     onAction: (LiveRideAction) -> Unit,
@@ -229,7 +231,7 @@ private fun ChatMessageItem(message: ChatMessage) {
 private fun ChatPanelCollapsedEmptyPreview() {
     CyclingCopilotTheme(dynamicColor = false) {
         ChatPanel(
-            chatMessages = emptyList(),
+            chatMessages = persistentListOf(),
             isChatExpanded = false,
             isProcessing = false,
             onAction = {},
@@ -243,7 +245,7 @@ private fun ChatPanelCollapsedWithMessagePreview() {
     CyclingCopilotTheme(dynamicColor = false) {
         ChatPanel(
             chatMessages =
-                listOf(
+                persistentListOf(
                     ChatMessage.Copilot(
                         id = "1",
                         text =
@@ -263,7 +265,7 @@ private fun ChatPanelExpandedPreview() {
     CyclingCopilotTheme(dynamicColor = false) {
         ChatPanel(
             chatMessages =
-                listOf(
+                persistentListOf(
                     ChatMessage.Copilot(
                         id = "1",
                         text = "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",
@@ -291,7 +293,7 @@ private fun ChatPanelExpandedProcessingPreview() {
     CyclingCopilotTheme(dynamicColor = false) {
         ChatPanel(
             chatMessages =
-                listOf(
+                persistentListOf(
                     ChatMessage.Copilot(
                         id = "1",
                         text = "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",

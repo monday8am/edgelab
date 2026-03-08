@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.dp
  * Ready for cycling-related content to be added.
  */
 @Composable
-fun CyclingScreen() {
+fun CyclingScreen(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         contentAlignment = Alignment.Center

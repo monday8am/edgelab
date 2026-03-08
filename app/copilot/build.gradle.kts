@@ -103,6 +103,8 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.maplibre.compose)
 
+    lintChecks(libs.compose.lint.checks)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

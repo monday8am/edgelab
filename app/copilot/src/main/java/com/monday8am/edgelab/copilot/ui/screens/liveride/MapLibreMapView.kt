@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.sp
 import com.monday8am.edgelab.presentation.liveride.LatLng as RideLatLng
 import com.monday8am.edgelab.presentation.liveride.PoiCategory
 import com.monday8am.edgelab.presentation.liveride.PoiMarker
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.maplibre.compose.camera.CameraPosition
@@ -37,10 +38,10 @@ private const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/dark"
 
 @Composable
 fun MapLibreMapView(
-    routePolyline: List<RideLatLng>,
-    completedPolyline: List<RideLatLng>,
+    routePolyline: ImmutableList<RideLatLng>,
+    completedPolyline: ImmutableList<RideLatLng>,
     riderPosition: RideLatLng,
-    pois: List<PoiMarker>,
+    pois: ImmutableList<PoiMarker>,
     modifier: Modifier = Modifier,
 ) {
     val cameraState = rememberCameraState(
