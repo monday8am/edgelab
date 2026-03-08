@@ -19,7 +19,7 @@ suspend fun main() {
 
     val engineConfig =
         EngineConfig(
-            backend = Backend.CPU,
+            backend = Backend.CPU(),
             maxNumTokens = 4096,
             modelPath = hammer2p1, // gemma3n
         )
