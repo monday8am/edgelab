@@ -77,7 +77,7 @@ class LocalInferenceLLMClient(
 
         return executor(lastUserMessage)
             .onEach { logger.d { it } }
-            .map<String, StreamFrame> { chunk -> StreamFrame.Append(text = chunk) }
+            .map<String, StreamFrame> { chunk -> StreamFrame.TextDelta(text = chunk) }
             .onCompletion { error ->
                 logger.d { "Streaming ended: $error" }
                 if (error == null) {

@@ -62,8 +62,8 @@ class LiteRTLmInferenceEngineImpl(
                         modelPath = modelPath,
                         backend =
                             if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
-                                Backend.GPU
-                            else Backend.CPU,
+                                Backend.GPU()
+                            else Backend.CPU(),
                         visionBackend = null, // Text-only inference
                         audioBackend = null, // Text-only inference
                         maxNumTokens = modelConfig.contextLength,
