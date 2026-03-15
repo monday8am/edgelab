@@ -7,7 +7,7 @@ Android research lab for on-device agentic AI. Two apps sharing multi-module arc
 ## Module Dependency Graph
 
 ```
-:data (Pure Kotlin) <- :agent (Pure Kotlin/JVM) <- :presentation (Pure Kotlin) <- :core (Android library) <- :app:edgelab
+:data (Pure Kotlin) <- :agent (Pure Kotlin/JVM) <- :presentation (Pure Kotlin) <- :core (Android library) <- :app:explorer
                                                                                                            <- :app:copilot
 ```
 
@@ -28,7 +28,7 @@ Strict unidirectional. No module may depend on a module to its right.
 
 ### Build
 - `./gradlew build` — all modules
-- `./gradlew :app:edgelab:assembleDebug` — EdgeLab APK
+- `./gradlew :app:explorer:assembleDebug` — EdgeLab APK
 - `./gradlew :app:copilot:assembleDebug` — CyclingCopilot APK
 - `./gradlew clean` — clean
 
@@ -44,8 +44,20 @@ Strict unidirectional. No module may depend on a module to its right.
 - `./gradlew ktfmtCheck` — check only
 
 ### Install
-- `./gradlew :app:edgelab:installDebug` — install EdgeLab
+- `./gradlew :app:explorer:installDebug` — install EdgeLab
 - `./gradlew :app:copilot:installDebug` — install CyclingCopilot
+
+### Release
+- `./gradlew :app:explorer:bundleRelease` — EdgeLab AAB (requires upload keystore)
+- `./gradlew :app:copilot:bundleRelease` — CyclingCopilot AAB (requires upload keystore)
+- GitHub Actions: **Release Build** workflow (manual trigger, select app + version)
+
+### Signing
+- Uses **Google Play App Signing** — Google holds the app signing key, we hold upload keys.
+- Each app has its own upload keystore and properties file:
+  - `signing/explorer-upload.keystore` + `signing/explorer-upload.properties`
+  - `signing/copilot-upload.keystore` + `signing/copilot-upload.properties`
+- All signing files are gitignored. CI uses per-app GitHub secrets (`EDGELAB_UPLOAD_*` / `COPILOT_UPLOAD_*`).
 
 ## Documentation
 

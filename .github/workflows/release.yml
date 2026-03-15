@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         options:
-          - edgelab
+          - explorer
           - copilot
       version_name:
         description: 'Version name (e.g., 1.0.0)'
@@ -47,7 +47,7 @@ jobs:
 
       - name: Decode upload keystore
         env:
-          UPLOAD_KEYSTORE_BASE64: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_BASE64', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_BASE64', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
         run: |
           mkdir -p signing
           printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 -d > signing/upload.keystore
@@ -56,10 +56,10 @@ jobs:
           file signing/upload.keystore
 
       - name: Decode google-services.json
-        if: inputs.app == 'edgelab'
+        if: inputs.app == 'explorer'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/edgelab/google-services.json
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/explorer/google-services.json
 
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
@@ -78,17 +78,17 @@ jobs:
       - name: Build release AAB
         env:
           KEYSTORE_FILE: signing/upload.keystore
-          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
-          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
-          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
         run: ./gradlew :app:${{ inputs.app }}:bundleRelease
 
       - name: Build release APK
         env:
           KEYSTORE_FILE: signing/upload.keystore
-          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
-          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
-          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'explorer' && 'EDGELAB' || 'COPILOT')] }}
         run: ./gradlew :app:${{ inputs.app }}:assembleRelease
 
       - name: Rename artifacts

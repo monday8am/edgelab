@@ -25,7 +25,7 @@ EdgeLab/
 ## Module Dependencies
 
 ```
-:data ← :agent ← :presentation ← :core ← :app:edgelab
+:data ← :agent ← :presentation ← :core ← :app:explorer
                                        ← :app:copilot
 ```
 
@@ -58,7 +58,7 @@ EdgeLab/
 - Created factories: `createOAuthManager()`, `createAuthRepository()`
 
 ### ✅ Phase 5: EdgeLab App Module
-- **Created**: `:app:edgelab`
+- **Created**: `:app:explorer`
 - **Package**: `com.monday8am.edgelab.explorer`
 - **Application ID**: `com.monday8am.edgelab.explorer`
 - **OAuth Scheme**: `edgelab://oauth/callback`
@@ -119,11 +119,11 @@ Each app can:
 ./gradlew build
 
 # Build specific apps
-./gradlew :app:edgelab:assembleDebug
+./gradlew :app:explorer:assembleDebug
 ./gradlew :app:copilot:assembleDebug
 
 # Install apps
-./gradlew :app:edgelab:installDebug
+./gradlew :app:explorer:installDebug
 ./gradlew :app:copilot:installDebug
 
 # Both apps can be installed simultaneously (different package names)
@@ -131,7 +131,7 @@ Each app can:
 
 ## App-Specific Details
 
-### Edge Agent Lab (`:app:edgelab`)
+### Edge Agent Lab (`:app:explorer`)
 - **Purpose**: Model testing and validation platform
 - **Package**: `com.monday8am.edgelab.explorer`
 - **Features**:

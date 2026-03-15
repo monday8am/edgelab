@@ -11,7 +11,7 @@ plugins {
 
 // Load upload keystore properties from file or environment variables
 // With Google Play App Signing, this is the upload key (not the app signing key)
-val keystorePropertiesFile = rootProject.file("signing/edgelab-upload.properties")
+val keystorePropertiesFile = rootProject.file("signing/explorer-upload.properties")
 val keystoreProperties =
     Properties().apply {
         if (keystorePropertiesFile.exists()) {

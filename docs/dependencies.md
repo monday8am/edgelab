@@ -98,7 +98,7 @@ Pure Kotlin modules also set `sourceCompatibility` / `targetCompatibility` to `V
 
 App modules must exclude META-INF files to avoid duplicates from Koog/Ktor transitive deps:
 ```kotlin
-// app/edgelab/build.gradle.kts, app/copilot/build.gradle.kts
+// app/explorer/build.gradle.kts, app/copilot/build.gradle.kts
 packaging { resources { excludes += "META-INF/*" } }
 ```
 
@@ -124,7 +124,7 @@ App modules include Slack's Compose lint checks:
 lintChecks(libs.compose.lint.checks)
 ```
 
-Some rules are disabled for prototype stage — see lint block in `app/edgelab/build.gradle.kts`.
+Some rules are disabled for prototype stage — see lint block in `app/explorer/build.gradle.kts`.
 
 ---
 
