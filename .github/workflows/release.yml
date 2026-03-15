@@ -56,6 +56,7 @@ jobs:
           file signing/upload.keystore
 
       - name: Decode google-services.json
+        if: inputs.app == 'edgelab'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/edgelab/google-services.json
