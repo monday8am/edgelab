@@ -3,6 +3,13 @@ name: Release Build
 on:
   workflow_dispatch:
     inputs:
+      app:
+        description: 'App to build'
+        required: true
+        type: choice
+        options:
+          - edgelab
+          - copilot
       version_name:
         description: 'Version name (e.g., 1.0.0)'
         required: true
@@ -35,114 +42,92 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode keystore
+      - name: Decode upload keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_BASE64', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
         run: |
           mkdir -p signing
-          # Use printf to avoid echo interpretation issues
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > signing/release.keystore
-
-          # Verify file characteristics
-          echo "=== File info ==="
-          ls -l signing/release.keystore
-          file signing/release.keystore
-
-          # Check file size (expected: 2750 bytes)
-          ACTUAL_SIZE=$(stat -c%s signing/release.keystore)
-          EXPECTED_SIZE=2750
-          echo "File size: $ACTUAL_SIZE bytes (expected: $EXPECTED_SIZE)"
-
-          # Check MD5 (expected: f58ee42e2c77ae10bc81c1d6da41b417)
-          ACTUAL_MD5=$(md5sum signing/release.keystore | cut -d' ' -f1)
-          EXPECTED_MD5="f58ee42e2c77ae10bc81c1d6da41b417"
-          echo "MD5: $ACTUAL_MD5 (expected: $EXPECTED_MD5)"
-
-          if [ "$ACTUAL_SIZE" -ne "$EXPECTED_SIZE" ]; then
-            echo "ERROR: File size mismatch!"
-            echo "Base64 secret length: ${#KEYSTORE_BASE64}"
-            exit 1
-          fi
-
-          if [ "$ACTUAL_MD5" != "$EXPECTED_MD5" ]; then
-            echo "ERROR: MD5 checksum mismatch!"
-            exit 1
-          fi
-
-          echo "Keystore verification passed!"
+          printf '%s' "$UPLOAD_KEYSTORE_BASE64" | base64 -d > signing/upload.keystore
+          echo "=== Upload keystore info ==="
+          ls -l signing/upload.keystore
+          file signing/upload.keystore
 
       - name: Decode google-services.json
+        if: inputs.app == 'edgelab'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/edgelab/google-services.json
 
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
 
       - name: Update version in build.gradle.kts
         run: |
-          sed -i "s/versionCode = [0-9]\+/versionCode = ${{ inputs.version_code }}/" app/build.gradle.kts
-          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version_name }}\"/" app/build.gradle.kts
+          BUILD_FILE="app/${{ inputs.app }}/build.gradle.kts"
+          sed -i "s/versionCode = [0-9]\+/versionCode = ${{ inputs.version_code }}/" "$BUILD_FILE"
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version_name }}\"/" "$BUILD_FILE"
           echo "Updated version to code=${{ inputs.version_code }}, name=${{ inputs.version_name }}"
-          grep -E "versionCode|versionName" app/build.gradle.kts
+          grep -E "versionCode|versionName" "$BUILD_FILE"
 
       - name: Run tests
         run: ./gradlew test
 
       - name: Build release AAB
         env:
-          KEYSTORE_FILE: signing/release.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:bundleRelease
+          KEYSTORE_FILE: signing/upload.keystore
+          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+        run: ./gradlew :app:${{ inputs.app }}:bundleRelease
 
       - name: Build release APK
         env:
-          KEYSTORE_FILE: signing/release.keystore
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease
+          KEYSTORE_FILE: signing/upload.keystore
+          KEYSTORE_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEYSTORE_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_ALIAS: ${{ secrets[format('{0}_UPLOAD_KEY_ALIAS', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+          KEY_PASSWORD: ${{ secrets[format('{0}_UPLOAD_KEY_PASSWORD', inputs.app == 'edgelab' && 'EDGELAB' || 'COPILOT')] }}
+        run: ./gradlew :app:${{ inputs.app }}:assembleRelease
 
       - name: Rename artifacts
         run: |
-          mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
+          mv app/${{ inputs.app }}/build/outputs/bundle/release/app-release.aab \
+             app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-v${{ inputs.version_name }}.aab
+          mv app/${{ inputs.app }}/build/outputs/apk/release/app-release.apk \
+             app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-v${{ inputs.version_name }}.apk
 
       - name: Size reporting
         run: |
           echo "=== Artifact Sizes ==="
-          ls -lh app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
-          ls -lh app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
+          ls -lh app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-v${{ inputs.version_name }}.aab
+          ls -lh app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-v${{ inputs.version_name }}.apk
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-aab
-          path: app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
+          name: ${{ inputs.app }}-release-aab
+          path: app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-v${{ inputs.version_name }}.aab
           retention-days: 30
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
+          name: ${{ inputs.app }}-release-apk
+          path: app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-v${{ inputs.version_name }}.apk
           retention-days: 30
 
       - name: Create GitHub Release
         if: ${{ inputs.create_release }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version_name }}
-          name: Release v${{ inputs.version_name }}
+          tag_name: ${{ inputs.app }}-v${{ inputs.version_name }}
+          name: ${{ inputs.app }} v${{ inputs.version_name }}
           draft: true
           generate_release_notes: true
           files: |
-            app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
-            app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
+            app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-v${{ inputs.version_name }}.aab
+            app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-v${{ inputs.version_name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,8 +6,9 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Load keystore properties from file or environment variables
-val keystorePropertiesFile = rootProject.file("signing/keystore.properties")
+// Load upload keystore properties from file or environment variables
+// With Google Play App Signing, this is the upload key (not the app signing key)
+val keystorePropertiesFile = rootProject.file("signing/copilot-upload.properties")
 val keystoreProperties =
     Properties().apply {
         if (keystorePropertiesFile.exists()) {
