@@ -32,10 +32,10 @@ The project uses a **multi-module KMP-ready architecture** with a shared Android
 | `:agent` | Pure Kotlin | Agent logic, tool handlers, inference interfaces |
 | `:presentation` | Pure Kotlin | MVI ViewModels, test engine (KMP-ready) |
 | `:core` | Android library | Shared infrastructure: inference, download, OAuth, storage |
-| `:app:edgelab` | Android app | EdgeLab — model testing and tool calling validation |
+| `:app:explorer` | Android app | EdgeLab — model testing and tool calling validation |
 | `:app:copilot` | Android app | CyclingCopilot — on-device AI cycling assistant |
 
-Module dependencies: `:data` ← `:agent` ← `:presentation` ← `:core` ← `:app:edgelab`, `:app:copilot`
+Module dependencies: `:data` ← `:agent` ← `:presentation` ← `:core` ← `:app:explorer`, `:app:copilot`
 
 For full technical details see [`docs/architecture.md`](docs/architecture.md).
 

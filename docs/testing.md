@@ -207,7 +207,7 @@ After making code changes, run this sequence:
 ```bash
 ./gradlew ktfmtFormat                                              # 1. Fix formatting
 ./gradlew test                                                      # 2. Run all tests
-./gradlew :app:edgelab:assembleDebug :app:copilot:assembleDebug    # 3. Both apps compile
+./gradlew :app:explorer:assembleDebug :app:copilot:assembleDebug    # 3. Both apps compile
 ```
 
 If tests fail: read the failure output, fix the issue, re-run from step 1.

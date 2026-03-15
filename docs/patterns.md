@@ -244,7 +244,7 @@ object CoreDependencies {
 ### Level 2 — App-level `Dependencies` object
 
 ```kotlin
-// app/edgelab/src/.../Dependencies.kt
+// app/explorer/src/.../Dependencies.kt
 object Dependencies {
     lateinit var appContext: Context
     val applicationScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
@@ -344,7 +344,7 @@ Rules:
 - `:agent` — `com.monday8am.edgelab.agent.<subpackage>` (core, tools, local)
 - `:presentation` — `com.monday8am.edgelab.presentation.<feature>` (onboard, modelselector, testing)
 - `:core` — `com.monday8am.edgelab.core.<subpackage>` (di, inference, download, oauth, storage)
-- `:app:edgelab` — `com.monday8am.edgelab.explorer.ui.screens.<feature>`
+- `:app:explorer` — `com.monday8am.edgelab.explorer.ui.screens.<feature>`
 - `:app:copilot` — `com.monday8am.edgelab.copilot.ui.screens.<feature>`
 
 ### Test naming
@@ -413,7 +413,7 @@ ktfmt handles import ordering automatically. Run `./gradlew ktfmtFormat` and let
 - MUST exclude `litertlm-jvm` from `:agent` and `:presentation` transitive deps.
 - Contains `CoreDependencies` factory object.
 
-### `:app:edgelab` / `:app:copilot` — Android apps
+### `:app:explorer` / `:app:copilot` — Android apps
 - Android ViewModel wrappers, Compose screens, navigation, DI wiring.
 - Business logic does NOT go here — it belongs in `:presentation`.
 - Each app has its own `Dependencies` object wiring `CoreDependencies` factories.

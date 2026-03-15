@@ -33,7 +33,7 @@
 
 ## Next Up
 
-- [x] Upload app to Play Store
+- [x] Upload app to Play Store (recreated as `com.monday8am.edgelab.explorer`)
 - [x] Add FunctionGemma model support
 - [ ] Add trained / not trained model filtering
 - [ ] Show agentic tests only for supported models

@@ -22,7 +22,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "EdgeLab"
 
-include(":app:edgelab")
+include(":app:explorer")
 
 include(":app:copilot")
 

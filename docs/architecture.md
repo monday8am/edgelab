@@ -9,7 +9,7 @@ Technical documentation for the EdgeLab project. Covers module structure, key co
 ## Module Structure
 
 ```
-:data ← :agent ← :presentation ← :core ← :app:edgelab
+:data ← :agent ← :presentation ← :core ← :app:explorer
                                         ← :app:copilot
 ```
 
@@ -21,7 +21,7 @@ Six modules with a strict unidirectional dependency graph:
 | `:agent` | Pure Kotlin/JVM | `com.monday8am.edgelab.agent` |
 | `:presentation` | Pure Kotlin (KMP-ready) | `com.monday8am.edgelab.presentation` |
 | `:core` | Android library | `com.monday8am.edgelab.core` |
-| `:app:edgelab` | Android app | `com.monday8am.edgelab.explorer` |
+| `:app:explorer` | Android app | `com.monday8am.edgelab.explorer` |
 | `:app:copilot` | Android app | `com.monday8am.edgelab.copilot` |
 
 ---
@@ -58,7 +58,7 @@ Implements interfaces from upstream modules with Android-specific infrastructure
 
 ---
 
-## `:app:edgelab` — EdgeLab App
+## `:app:explorer` — EdgeLab App
 
 **Package**: `com.monday8am.edgelab.explorer`
 **Application ID**: `com.monday8am.edgelab.explorer`
