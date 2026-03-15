@@ -93,9 +93,9 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          mv app/${{ inputs.app }}/build/outputs/bundle/release/app-release.aab \
+          mv app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-release.aab \
              app/${{ inputs.app }}/build/outputs/bundle/release/${{ inputs.app }}-v${{ inputs.version_name }}.aab
-          mv app/${{ inputs.app }}/build/outputs/apk/release/app-release.apk \
+          mv app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-release.apk \
              app/${{ inputs.app }}/build/outputs/apk/release/${{ inputs.app }}-v${{ inputs.version_name }}.apk
 
       - name: Size reporting
