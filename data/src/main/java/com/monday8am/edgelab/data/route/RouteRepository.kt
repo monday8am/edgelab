@@ -1,5 +1,7 @@
 package com.monday8am.edgelab.data.route
 
+import kotlinx.coroutines.flow.Flow
+
 data class RouteCoordinate(
     val lat: Double,
     val lng: Double,
@@ -16,4 +18,6 @@ data class RouteData(
 
 interface RouteRepository {
     suspend fun getRoute(routeId: String): Result<RouteData>
+
+    fun routeFlow(routeId: String): Flow<RouteData>
 }

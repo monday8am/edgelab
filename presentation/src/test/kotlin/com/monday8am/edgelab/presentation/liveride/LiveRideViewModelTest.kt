@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -23,11 +24,34 @@ internal class FakeRouteRepository(private val route: RouteData? = null) : Route
     override suspend fun getRoute(routeId: String): Result<RouteData> =
         if (route != null) Result.success(route)
         else Result.failure(NoSuchElementException("not found"))
+
+    override fun routeFlow(routeId: String): Flow<RouteData> = flow {
+        val data = getRoute(routeId).getOrThrow()
+        emit(data)
+    }
 }
 
 internal class FakeGpsSource : GpsSource {
     private val _positions = MutableSharedFlow<GpsPosition>()
     override val positions: Flow<GpsPosition> = _positions
+
+    var started = false
+        private set
+
+    var lastSpeedMultiplier = 1.0f
+        private set
+
+    override fun start() {
+        started = true
+    }
+
+    override fun pause() {
+        started = false
+    }
+
+    override fun setSpeedMultiplier(multiplier: Float) {
+        lastSpeedMultiplier = multiplier
+    }
 
     suspend fun emit(position: GpsPosition) = _positions.emit(position)
 }
@@ -66,7 +90,7 @@ class LiveRideViewModelTest {
         LiveRideViewModelImpl(
             routeId = "strade-bianche",
             routeRepository = FakeRouteRepository(route),
-            gpsSourceFactory = GpsSourceFactory { _, _ -> fakeGpsSource },
+            gpsSourceFactory = GpsSourceFactory { _ -> fakeGpsSource },
             dispatcher = testDispatcher,
         )
 
@@ -110,7 +134,7 @@ class LiveRideViewModelTest {
                 routeId = "strade-bianche",
                 routeRepository = FakeRouteRepository(twoPointRoute),
                 playbackSpeed = 2.0f,
-                gpsSourceFactory = GpsSourceFactory { _, _ -> FakeGpsSource() },
+                gpsSourceFactory = GpsSourceFactory { _ -> FakeGpsSource() },
                 dispatcher = testDispatcher,
             )
         advanceUntilIdle()
@@ -212,6 +236,7 @@ class LiveRideViewModelTest {
         assertTrue(viewModel.uiState.value.playbackState.isPlaying)
 
         viewModel.onUiAction(LiveRideAction.TogglePlayback)
+        advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.playbackState.isPlaying)
 
@@ -225,6 +250,7 @@ class LiveRideViewModelTest {
 
         viewModel.onUiAction(LiveRideAction.TogglePlayback)
         viewModel.onUiAction(LiveRideAction.TogglePlayback)
+        advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.playbackState.isPlaying)
 
@@ -238,6 +264,7 @@ class LiveRideViewModelTest {
         val initialSpeed = viewModel.uiState.value.playbackState.speedMultiplier
 
         viewModel.onUiAction(LiveRideAction.CycleSpeed)
+        advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.playbackState.speedMultiplier != initialSpeed)
 
@@ -250,6 +277,7 @@ class LiveRideViewModelTest {
         advanceUntilIdle()
 
         viewModel.onUiAction(LiveRideAction.ExpandChat)
+        advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isChatExpanded)
 
@@ -263,6 +291,7 @@ class LiveRideViewModelTest {
 
         viewModel.onUiAction(LiveRideAction.ExpandChat)
         viewModel.onUiAction(LiveRideAction.CollapseChat)
+        advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isChatExpanded)
 

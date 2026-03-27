@@ -1,5 +1,6 @@
 package com.monday8am.edgelab.presentation.liveride
 
+import com.monday8am.edgelab.data.route.RouteData
 import com.monday8am.edgelab.data.route.RouteRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -7,14 +8,18 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,22 +64,6 @@ data class PlaybackState(
     val totalKm: Float,
 )
 
-data class LiveRideUiState(
-    val routeName: String,
-    val isLoading: Boolean,
-    val routePolyline: ImmutableList<LatLng>,
-    val completedPolyline: ImmutableList<LatLng>,
-    val currentPosition: LatLng,
-    val currentHeading: Float,
-    val hudMetrics: HudMetrics,
-    val pois: ImmutableList<PoiMarker>,
-    val chatMessages: ImmutableList<ChatMessage>,
-    val isChatExpanded: Boolean,
-    val isVoiceRecording: Boolean,
-    val isProcessing: Boolean,
-    val playbackState: PlaybackState,
-)
-
 sealed interface LiveRideAction {
     data object TogglePlayback : LiveRideAction
 
@@ -97,130 +86,108 @@ interface LiveRideViewModel {
     fun dispose()
 }
 
+private sealed interface RouteState {
+    data object Loading : RouteState
+
+    data class Loaded(val data: RouteData) : RouteState
+
+    data object NotFound : RouteState
+}
+
+private data class ViewModelState(
+    val chatMessages: ImmutableList<ChatMessage> = persistentListOf(),
+    val isPlaying: Boolean = false,
+    val speedMultiplier: Float = 1.0f,
+    val isChatExpanded: Boolean = false,
+    val isVoiceRecording: Boolean = false,
+    val isProcessing: Boolean = false,
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class LiveRideViewModelImpl(
     private val routeId: String,
     private val routeRepository: RouteRepository,
     private val playbackSpeed: Float = 1.0f,
-    private val gpsSourceFactory: GpsSourceFactory = GpsSourceFactory { points, state ->
-        SimulatedGpsSource(points, state)
+    private val gpsSourceFactory: GpsSourceFactory = GpsSourceFactory { points ->
+        SimulatedGpsSource(points)
     },
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : LiveRideViewModel {
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
-    private var routePoints: List<LatLng> = emptyList()
     private var messageIdCounter = 1
+    @Volatile private var gpsSource: GpsSource? = null
 
     companion object {
         private val SPEED_MULTIPLIERS = listOf(1.0f, 2.0f, 4.0f, 8.0f)
     }
 
-    private val _uiState =
-        MutableStateFlow(
-            LiveRideUiState(
-                routeName = "",
-                isLoading = true,
-                routePolyline = persistentListOf(),
-                completedPolyline = persistentListOf(),
-                currentPosition = LatLng(43.3226, 11.3223),
-                currentHeading = 0f,
-                hudMetrics =
-                    HudMetrics(speed = 0f, distance = 0f, power = null, batteryPercent = 88),
-                pois = persistentListOf(),
-                chatMessages = persistentListOf(),
-                isChatExpanded = false,
-                isVoiceRecording = false,
-                isProcessing = false,
-                playbackState =
-                    PlaybackState(
-                        isPlaying = false,
-                        speedMultiplier = playbackSpeed,
-                        currentKm = 0f,
-                        totalKm = 0f,
-                    ),
-            )
-        )
+    private val viewModelState = MutableStateFlow(ViewModelState(speedMultiplier = playbackSpeed))
 
-    override val uiState: StateFlow<LiveRideUiState> = _uiState.asStateFlow()
-
-    init {
-        scope.launch {
-            loadRoute()
-            if (routePoints.isNotEmpty()) {
-                startGps()
+    private val routeState: StateFlow<RouteState> =
+        routeRepository
+            .routeFlow(routeId)
+            .map<RouteData, RouteState> { data ->
+                if (data.coordinates.isNotEmpty()) RouteState.Loaded(data) else RouteState.NotFound
             }
-        }
-    }
+            .catch { emit(RouteState.NotFound) }
+            .stateIn(scope, SharingStarted.Eagerly, RouteState.Loading)
 
-    private suspend fun loadRoute() {
-        val data = routeRepository.getRoute(routeId).getOrNull()
-        if (data == null || data.coordinates.isEmpty()) {
-            _uiState.update { it.copy(isLoading = false) }
-            return
-        }
-        routePoints = data.coordinates.map { LatLng(it.lat, it.lng) }
-        val startPos = routePoints.first()
-        val totalKm = data.distanceKm
+    override val uiState: StateFlow<LiveRideUiState> =
+        routeState
+            .flatMapLatest { state ->
+                when (state) {
+                    RouteState.Loading ->
+                        viewModelState.map { vm -> deriveUiState(vm, route = null, gps = null) }
+                    RouteState.NotFound ->
+                        viewModelState.map { vm ->
+                            deriveUiState(vm, route = null, gps = null, isLoading = false)
+                        }
+                    is RouteState.Loaded -> {
+                        val route = state.data
+                        val points = route.coordinates.map { LatLng(it.lat, it.lng) }
+                        val routePolyline = points.toImmutableList()
+                        val welcomeMessages =
+                            persistentListOf(
+                                ChatMessage.Copilot(
+                                    id = "msg_0",
+                                    text =
+                                        "Ride started! ${route.name}. Ready when you are \uD83D\uDEB4",
+                                )
+                            )
+                        val source = gpsSourceFactory.create(points)
+                        gpsSource = source
+                        source.setSpeedMultiplier(viewModelState.value.speedMultiplier)
+                        source.start()
+                        viewModelState.update { it.copy(isPlaying = true) }
 
-        _uiState.update { state ->
-            state.copy(
-                routeName = data.name,
-                isLoading = false,
-                routePolyline = routePoints.toImmutableList(),
-                completedPolyline = persistentListOf(startPos),
-                currentPosition = startPos,
-                hudMetrics =
-                    HudMetrics(speed = 0f, distance = 0f, power = 170, batteryPercent = 88),
-                chatMessages =
-                    persistentListOf(
-                        ChatMessage.Copilot(
-                            id = "msg_0",
-                            text = "Ride started! ${data.name}. Ready when you are 🚴",
-                        )
-                    ),
-                playbackState = state.playbackState.copy(isPlaying = true, totalKm = totalKm),
-            )
-        }
-    }
-
-    private fun startGps() {
-        val playbackStateFlow =
-            _uiState
-                .map { it.playbackState }
-                .stateIn(scope, SharingStarted.Eagerly, _uiState.value.playbackState)
-
-        scope.launch {
-            gpsSourceFactory.create(routePoints, playbackStateFlow).positions.collect { pos ->
-                applyGpsPosition(pos)
+                        combine(
+                            source.positions.onStart<GpsPosition?> { emit(null) },
+                            viewModelState,
+                        ) { gps, vm ->
+                            deriveUiState(vm, routePolyline, welcomeMessages, route, gps)
+                        }
+                    }
+                }
             }
-        }
-    }
-
-    private fun applyGpsPosition(pos: GpsPosition) {
-        _uiState.update { state ->
-            state.copy(
-                completedPolyline = routePoints.take(pos.routePointIndex + 1).toImmutableList(),
-                currentPosition = pos.latLng,
-                currentHeading = pos.heading,
-                hudMetrics =
-                    HudMetrics(
-                        speed = pos.speedKmh,
-                        distance = pos.distanceTravelledKm,
-                        power = pos.power,
-                        batteryPercent = 88,
-                    ),
-                playbackState = state.playbackState.copy(currentKm = pos.distanceTravelledKm),
-            )
-        }
-    }
+            .stateIn(scope, SharingStarted.Eagerly, LiveRideUiState.empty(playbackSpeed))
 
     override fun onUiAction(action: LiveRideAction) {
         when (action) {
-            LiveRideAction.TogglePlayback -> togglePlayback()
-            LiveRideAction.CycleSpeed -> cycleSpeed()
-            LiveRideAction.ExpandChat -> _uiState.update { it.copy(isChatExpanded = true) }
-            LiveRideAction.CollapseChat -> _uiState.update { it.copy(isChatExpanded = false) }
+            LiveRideAction.TogglePlayback -> {
+                val nowPlaying = !viewModelState.value.isPlaying
+                if (nowPlaying) gpsSource?.start() else gpsSource?.pause()
+                viewModelState.update { it.copy(isPlaying = nowPlaying) }
+            }
+            LiveRideAction.CycleSpeed -> {
+                val currentIdx = SPEED_MULTIPLIERS.indexOf(viewModelState.value.speedMultiplier)
+                val next = SPEED_MULTIPLIERS[(currentIdx + 1) % SPEED_MULTIPLIERS.size]
+                gpsSource?.setSpeedMultiplier(next)
+                viewModelState.update { it.copy(speedMultiplier = next) }
+            }
+            LiveRideAction.ExpandChat -> viewModelState.update { it.copy(isChatExpanded = true) }
+            LiveRideAction.CollapseChat -> viewModelState.update { it.copy(isChatExpanded = false) }
             is LiveRideAction.SendTextMessage -> sendTextMessage(action.text)
             LiveRideAction.EndRide -> {
                 /* navigation handled in UI layer */
@@ -228,24 +195,12 @@ class LiveRideViewModelImpl(
         }
     }
 
-    private fun togglePlayback() {
-        _uiState.update {
-            it.copy(playbackState = it.playbackState.copy(isPlaying = !it.playbackState.isPlaying))
-        }
-    }
-
-    private fun cycleSpeed() {
-        _uiState.update { state ->
-            val idx = SPEED_MULTIPLIERS.indexOf(state.playbackState.speedMultiplier)
-            val next = SPEED_MULTIPLIERS[(idx + 1) % SPEED_MULTIPLIERS.size]
-            state.copy(playbackState = state.playbackState.copy(speedMultiplier = next))
-        }
-    }
-
     private fun sendTextMessage(text: String) {
         if (text.isBlank()) return
         val userMsg = ChatMessage.User(id = "msg_${messageIdCounter++}", text = text)
-        _uiState.update { it.copy(chatMessages = (it.chatMessages + userMsg).toImmutableList()) }
+        viewModelState.update {
+            it.copy(chatMessages = (it.chatMessages + userMsg).toImmutableList())
+        }
         scope.launch {
             delay(1500)
             val reply =
@@ -253,8 +208,74 @@ class LiveRideViewModelImpl(
                     id = "msg_${messageIdCounter++}",
                     text = "Got it! Keeping an eye on the route ahead.",
                 )
-            _uiState.update { it.copy(chatMessages = (it.chatMessages + reply).toImmutableList()) }
+            viewModelState.update {
+                it.copy(chatMessages = (it.chatMessages + reply).toImmutableList())
+            }
         }
+    }
+
+    private fun deriveUiState(
+        state: ViewModelState,
+        route: RouteData?,
+        gps: GpsPosition?,
+        isLoading: Boolean = route == null,
+    ): LiveRideUiState =
+        deriveUiState(state, persistentListOf(), persistentListOf(), route, gps, isLoading)
+
+    private fun deriveUiState(
+        state: ViewModelState,
+        routePolyline: ImmutableList<LatLng>,
+        welcomeMessages: ImmutableList<ChatMessage>,
+        route: RouteData?,
+        gps: GpsPosition?,
+        isLoading: Boolean = route == null,
+    ): LiveRideUiState {
+        val firstPoint = if (routePolyline.isNotEmpty()) routePolyline.first() else LatLng(0.0, 0.0)
+        val chatMessages =
+            if (welcomeMessages.isEmpty() && state.chatMessages.isEmpty()) {
+                persistentListOf()
+            } else {
+                (welcomeMessages + state.chatMessages).toImmutableList()
+            }
+
+        return LiveRideUiState(
+            routeName = route?.name ?: "",
+            isLoading = isLoading,
+            routePolyline = routePolyline,
+            completedPolyline =
+                if (gps != null) {
+                    routePolyline.take(gps.routePointIndex + 1).toImmutableList()
+                } else if (routePolyline.isNotEmpty()) {
+                    persistentListOf(firstPoint)
+                } else {
+                    persistentListOf()
+                },
+            currentPosition = gps?.latLng ?: firstPoint,
+            currentHeading = gps?.heading ?: 0f,
+            hudMetrics =
+                if (gps != null) {
+                    HudMetrics(
+                        speed = gps.speedKmh,
+                        distance = gps.distanceTravelledKm,
+                        power = gps.power,
+                        batteryPercent = 88,
+                    )
+                } else {
+                    HudMetrics(speed = 0f, distance = 0f, power = null, batteryPercent = 88)
+                },
+            pois = persistentListOf(),
+            chatMessages = chatMessages,
+            isChatExpanded = state.isChatExpanded,
+            isVoiceRecording = state.isVoiceRecording,
+            isProcessing = state.isProcessing,
+            playbackState =
+                PlaybackState(
+                    isPlaying = state.isPlaying,
+                    speedMultiplier = state.speedMultiplier,
+                    currentKm = gps?.distanceTravelledKm ?: 0f,
+                    totalKm = route?.distanceKm ?: 0f,
+                ),
+        )
     }
 
     override fun dispose() {

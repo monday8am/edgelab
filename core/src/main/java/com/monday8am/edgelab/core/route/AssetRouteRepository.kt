@@ -9,6 +9,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -44,6 +46,10 @@ class AssetRouteRepository(private val context: Context) : RouteRepository {
                 coordinates = coords,
             )
         }
+    }
+
+    override fun routeFlow(routeId: String): Flow<RouteData> = flow {
+        emit(getRoute(routeId).getOrThrow())
     }
 
     private fun computeDistanceKm(coords: List<RouteCoordinate>): Float {
