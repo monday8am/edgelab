@@ -117,7 +117,7 @@ class LiveRideViewModelImpl(
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private var messageIdCounter = 1
-    private var gpsSource: GpsSource? = null
+    @Volatile private var gpsSource: GpsSource? = null
 
     companion object {
         private val SPEED_MULTIPLIERS = listOf(1.0f, 2.0f, 4.0f, 8.0f)
@@ -181,12 +181,10 @@ class LiveRideViewModelImpl(
                 viewModelState.update { it.copy(isPlaying = nowPlaying) }
             }
             LiveRideAction.CycleSpeed -> {
-                viewModelState.update { state ->
-                    val idx = SPEED_MULTIPLIERS.indexOf(state.speedMultiplier)
-                    val next = SPEED_MULTIPLIERS[(idx + 1) % SPEED_MULTIPLIERS.size]
-                    gpsSource?.setSpeedMultiplier(next)
-                    state.copy(speedMultiplier = next)
-                }
+                val currentIdx = SPEED_MULTIPLIERS.indexOf(viewModelState.value.speedMultiplier)
+                val next = SPEED_MULTIPLIERS[(currentIdx + 1) % SPEED_MULTIPLIERS.size]
+                gpsSource?.setSpeedMultiplier(next)
+                viewModelState.update { it.copy(speedMultiplier = next) }
             }
             LiveRideAction.ExpandChat -> viewModelState.update { it.copy(isChatExpanded = true) }
             LiveRideAction.CollapseChat -> viewModelState.update { it.copy(isChatExpanded = false) }
