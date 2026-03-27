@@ -3,14 +3,15 @@ package com.monday8am.edgelab.presentation.liveride
 import kotlin.random.Random
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 
 class SimulatedGpsSource(
     private val routePoints: List<LatLng>,
-    private val playbackState: StateFlow<PlaybackState>,
     private val tickIntervalMs: Long = 1000L,
 ) : GpsSource {
+
+    @Volatile private var playing = false
+    @Volatile private var speedMultiplier = 1.0f
 
     override val positions: Flow<GpsPosition> = flow {
         if (routePoints.size < 2) return@flow
@@ -22,10 +23,9 @@ class SimulatedGpsSource(
         while (true) {
             delay(tickIntervalMs)
 
-            val state = playbackState.value
-            if (!state.isPlaying) continue
+            if (!playing) continue
 
-            val steps = state.speedMultiplier.toInt().coerceIn(1, 8)
+            val steps = speedMultiplier.toInt().coerceIn(1, 8)
             repeat(steps) {
                 if (currentIndex >= routePoints.size - 1) {
                     currentIndex = 0
@@ -51,5 +51,17 @@ class SimulatedGpsSource(
                 )
             }
         }
+    }
+
+    override fun start() {
+        playing = true
+    }
+
+    override fun pause() {
+        playing = false
+    }
+
+    override fun setSpeedMultiplier(multiplier: Float) {
+        speedMultiplier = multiplier
     }
 }

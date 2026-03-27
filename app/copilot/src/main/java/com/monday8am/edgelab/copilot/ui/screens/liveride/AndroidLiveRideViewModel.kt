@@ -13,8 +13,8 @@ class AndroidLiveRideViewModel(
     routeId: String,
     routeRepository: RouteRepository,
     playbackSpeed: Float = 1.0f,
-    gpsSourceFactory: GpsSourceFactory = GpsSourceFactory { points, state ->
-        SimulatedGpsSource(points, state)
+    gpsSourceFactory: GpsSourceFactory = GpsSourceFactory { points ->
+        SimulatedGpsSource(points)
     },
 ) : ViewModel() {
 

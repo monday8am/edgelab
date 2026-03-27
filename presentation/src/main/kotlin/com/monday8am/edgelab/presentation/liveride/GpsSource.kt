@@ -1,7 +1,6 @@
 package com.monday8am.edgelab.presentation.liveride
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 
 data class GpsPosition(
     val latLng: LatLng,
@@ -14,8 +13,14 @@ data class GpsPosition(
 
 interface GpsSource {
     val positions: Flow<GpsPosition>
+
+    fun start()
+
+    fun pause()
+
+    fun setSpeedMultiplier(multiplier: Float)
 }
 
 fun interface GpsSourceFactory {
-    fun create(routePoints: List<LatLng>, playbackState: StateFlow<PlaybackState>): GpsSource
+    fun create(routePoints: List<LatLng>): GpsSource
 }
