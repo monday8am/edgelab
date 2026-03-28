@@ -23,6 +23,21 @@ Strict unidirectional. No module may depend on a module to its right.
 6. All dependency versions go in `gradle/libs.versions.toml`. Never hardcode in `build.gradle.kts`.
 7. Every feature follows the 3-layer ViewModel pattern: interface + impl in `:presentation`, wrapper in `:app:*`. See `docs/patterns.md`.
 8. Every new ViewModel requires unit tests. Every new Composable screen requires `@Preview`. See `presentation/CLAUDE.md` for specifics.
+9. IMPORTANT: Read `docs/patterns.md` before adding new classes. Read `docs/testing.md` before writing tests.
+10. Always rethrow `CancellationException` — never swallow in catch blocks.
+11. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
+
+## Anti-Patterns
+
+| Don't | Do Instead |
+|-------|-----------|
+| Side effects inside `MutableStateFlow.update{}` | Extract before `update{}` — lambda may CAS-retry |
+| Redundant `flowOn` when `withContext` handles dispatch | Pick one |
+| Import `androidx.lifecycle` in `:presentation` | Only in `:app:*` wrappers |
+| Hardcode `Dispatchers.IO` in ViewModel | Accept `ioDispatcher` param |
+| Missing `@Volatile` for cross-thread mutable vars | `@Volatile` or `AtomicReference` |
+| Boolean flags in test fakes (`called = true`) | Int counters (`callCount++`) |
+| `println()` or `android.util.Log` | Kermit `Logger.withTag()` |
 
 ## Commands
 
@@ -59,17 +74,26 @@ Strict unidirectional. No module may depend on a module to its right.
   - `signing/copilot-upload.keystore` + `signing/copilot-upload.properties`
 - All signing files are gitignored. CI uses per-app GitHub secrets (`EDGELAB_UPLOAD_*` / `COPILOT_UPLOAD_*`).
 
+## Verification
+
+| When | What | Command |
+|------|------|---------|
+| Every commit | Format | `./gradlew ktfmtFormat` |
+| Every commit | Tests | `./gradlew test` |
+| Every commit | Build both apps | `./gradlew :app:explorer:assembleDebug :app:copilot:assembleDebug` |
+
+Fail → fix → re-run from top.
+
 ## Documentation
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/patterns.md`](docs/patterns.md) | Code patterns with examples and anti-patterns |
-| [`docs/testing.md`](docs/testing.md) | Test patterns, fakes, verification workflow |
-| [`docs/dependencies.md`](docs/dependencies.md) | Build dependency constraints and gotchas |
-| [`docs/architecture.md`](docs/architecture.md) | Module contents — all classes and interfaces |
-| [`docs/edgelab/roadmap.md`](docs/edgelab/roadmap.md) | EdgeLab feature roadmap |
-| [`docs/cyclingcopilot/roadmap.md`](docs/cyclingcopilot/roadmap.md) | CyclingCopilot feature roadmap |
-| [`docs/cyclingcopilot/ui-architecture.md`](docs/cyclingcopilot/ui-architecture.md) | CyclingCopilot screen designs and specs |
+Read these **before** the corresponding task:
+
+| Before doing this | Read first |
+|-------------------|-----------|
+| Adding a new class or pattern | [`docs/patterns.md`](docs/patterns.md) |
+| Writing or modifying tests | [`docs/testing.md`](docs/testing.md) |
+| Adding a dependency | [`docs/dependencies.md`](docs/dependencies.md) |
+| Adding a module or screen | [`docs/architecture.md`](docs/architecture.md) |
 
 ## Scoped CLAUDE.md
 
@@ -82,7 +106,12 @@ When you add/rename/remove:
 - A ViewModel or Screen → update screen tables in `docs/architecture.md`
 - A dependency with exclusions or constraints → update `docs/dependencies.md`
 - A code pattern that agents keep getting wrong → add to `docs/patterns.md` anti-patterns
+- A new convention → add to `docs/patterns.md`
+- A recurring mistake → add to Anti-Patterns table above
 
 ## Workflow Automation
 
 Agent workflows live in `.agent/workflows/` with `// turbo-all` auto-approval. Run `ls .agent/workflows/` to see available workflows.
+
+### Slash Commands
+- `/commit-pr-greptile` — Commit, create PR, poll Greptile review, auto-fix.
