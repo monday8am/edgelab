@@ -13,13 +13,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 private val ROUTE_NAMES = mapOf(
     "strade-bianche" to "Strade Bianche GranFondo",
 )
-
-private val json = Json { ignoreUnknownKeys = true }
 
 @Serializable private data class RouteJsonDto(val coordinates: List<CoordinateJsonDto>)
 
@@ -37,7 +34,7 @@ class AssetRouteRepository(private val context: Context) : RouteRepository {
                 context.assets.open("routes/$routeId/route.json").bufferedReader().use {
                     it.readText()
                 }
-            val dto = json.decodeFromString<RouteJsonDto>(text)
+            val dto = routeJson.decodeFromString<RouteJsonDto>(text)
             val coords = dto.coordinates.map { RouteCoordinate(it.lat, it.lng, it.alt, it.t) }
             RouteData(
                 routeId = routeId,

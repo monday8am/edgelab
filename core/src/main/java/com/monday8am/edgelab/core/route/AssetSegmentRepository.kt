@@ -11,9 +11,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-private val json = Json { ignoreUnknownKeys = true }
 
 @Serializable
 private data class SegmentsJsonDto(
@@ -61,7 +58,7 @@ class AssetSegmentRepository(private val context: Context) : SegmentRepository {
                     context.assets.open("routes/$routeId/segments.json").bufferedReader().use {
                         it.readText()
                     }
-                val dto = json.decodeFromString<SegmentsJsonDto>(text)
+                val dto = routeJson.decodeFromString<SegmentsJsonDto>(text)
                 SegmentsData(
                     routeId = dto.routeId,
                     namedSectors =

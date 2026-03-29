@@ -10,9 +10,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-
-private val json = Json { ignoreUnknownKeys = true }
 
 @Serializable
 private data class WeatherJsonDto(
@@ -49,7 +46,7 @@ class AssetWeatherRepository(private val context: Context) : WeatherRepository {
                     context.assets.open("routes/$routeId/weather.json").bufferedReader().use {
                         it.readText()
                     }
-                val dto = json.decodeFromString<WeatherJsonDto>(text)
+                val dto = routeJson.decodeFromString<WeatherJsonDto>(text)
                 WeatherData(
                     routeId = dto.routeId,
                     location = dto.location,
