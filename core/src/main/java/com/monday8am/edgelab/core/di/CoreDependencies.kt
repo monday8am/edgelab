@@ -11,10 +11,14 @@ import com.monday8am.edgelab.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.edgelab.core.storage.AuthRepositoryImpl
 import com.monday8am.edgelab.core.storage.DataStoreAuthorRepository
 import com.monday8am.edgelab.core.route.AssetRouteRepository
+import com.monday8am.edgelab.core.route.AssetSegmentRepository
+import com.monday8am.edgelab.core.route.AssetWeatherRepository
 import com.monday8am.edgelab.data.auth.AuthRepository
 import com.monday8am.edgelab.data.auth.AuthorRepository
 import com.monday8am.edgelab.data.huggingface.HuggingFaceApiClient
 import com.monday8am.edgelab.data.route.RouteRepository
+import com.monday8am.edgelab.data.route.SegmentRepository
+import com.monday8am.edgelab.data.route.WeatherRepository
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 
@@ -73,6 +77,20 @@ object CoreDependencies {
      */
     fun createRouteRepository(context: Context): RouteRepository {
         return AssetRouteRepository(context)
+    }
+
+    /**
+     * Creates a segment repository that loads from bundled assets.
+     */
+    fun createSegmentRepository(context: Context): SegmentRepository {
+        return AssetSegmentRepository(context)
+    }
+
+    /**
+     * Creates a weather repository that loads from bundled assets.
+     */
+    fun createWeatherRepository(context: Context): WeatherRepository {
+        return AssetWeatherRepository(context)
     }
 
     /**

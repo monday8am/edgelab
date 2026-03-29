@@ -60,3 +60,5 @@ These are not optional. Do not mark a task complete without them.
 - Forgetting `dispose()` method
 - Not accepting `ioDispatcher` parameter (tests hang or flake)
 - Hardcoding `Dispatchers.IO` instead of using injected dispatcher
+
+See also the Anti-Patterns table in root `CLAUDE.md`.
