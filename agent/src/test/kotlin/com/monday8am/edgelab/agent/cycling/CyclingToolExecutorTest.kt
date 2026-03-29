@@ -2,9 +2,6 @@ package com.monday8am.edgelab.agent.cycling
 
 import com.monday8am.edgelab.data.route.GravelSector
 import com.monday8am.edgelab.data.route.HourlyWeather
-import com.monday8am.edgelab.data.route.RouteCoordinate
-import com.monday8am.edgelab.data.route.RouteData
-import com.monday8am.edgelab.data.route.RouteRepository
 import com.monday8am.edgelab.data.route.SegmentData
 import com.monday8am.edgelab.data.route.SegmentRepository
 import com.monday8am.edgelab.data.route.SegmentsData
@@ -14,10 +11,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CyclingToolExecutorTest {
 
     // region Fakes
@@ -37,12 +36,6 @@ class CyclingToolExecutorTest {
         override suspend fun getWeather(routeId: String): Result<WeatherData> = Result.success(data)
 
         override fun weatherFlow(routeId: String): Flow<WeatherData> = flowOf(data)
-    }
-
-    private class FakeRouteRepository(private val data: RouteData) : RouteRepository {
-        override suspend fun getRoute(routeId: String): Result<RouteData> = Result.success(data)
-
-        override fun routeFlow(routeId: String): Flow<RouteData> = flowOf(data)
     }
 
     // endregion
@@ -122,19 +115,10 @@ class CyclingToolExecutorTest {
                 ),
         )
 
-    private val testRoute =
-        RouteData(
-            routeId = "test-route",
-            name = "Test Route",
-            distanceKm = 184f,
-            coordinates = listOf(RouteCoordinate(43.3, 11.2, 300.0, 0L)),
-        )
-
     private fun createExecutor() =
         CyclingToolExecutor(
             segmentRepository = FakeSegmentRepository(testSegments),
             weatherRepository = FakeWeatherRepository(testWeather),
-            routeRepository = FakeRouteRepository(testRoute),
         )
 
     private val defaultContext =
@@ -145,6 +129,7 @@ class CyclingToolExecutorTest {
             power = 215,
             elapsedMs = 720_000L,
             totalDistanceKm = 184f,
+            rideStartHour = 8,
         )
 
     // endregion
@@ -152,13 +137,12 @@ class CyclingToolExecutorTest {
     // region Initialization Tests
 
     @Test
-    fun `initialize loads data from all repositories`() = runBlocking {
+    fun `initialize loads data from all repositories`() = runTest {
         val fakeSegments = FakeSegmentRepository(testSegments)
         val executor =
             CyclingToolExecutor(
                 segmentRepository = fakeSegments,
                 weatherRepository = FakeWeatherRepository(testWeather),
-                routeRepository = FakeRouteRepository(testRoute),
             )
         executor.initialize("test-route")
         assertEquals(1, fakeSegments.getSegmentsCallCount)
@@ -182,7 +166,7 @@ class CyclingToolExecutorTest {
     // region get_ride_status Tests
 
     @Test
-    fun `get_ride_status returns current speed and distance`() = runBlocking {
+    fun `get_ride_status returns current speed and distance`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result = executor.execute(CyclingToolDefinitions.GET_RIDE_STATUS, "{}", defaultContext)
@@ -192,7 +176,7 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `get_ride_status includes power when available`() = runBlocking {
+    fun `get_ride_status includes power when available`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result = executor.execute(CyclingToolDefinitions.GET_RIDE_STATUS, "{}", defaultContext)
@@ -201,7 +185,7 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `get_ride_status omits power when null`() = runBlocking {
+    fun `get_ride_status omits power when null`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val ctx = defaultContext.copy(power = null)
@@ -214,7 +198,7 @@ class CyclingToolExecutorTest {
     // region get_segment_ahead Tests
 
     @Test
-    fun `get_segment_ahead returns next named sector ahead`() = runBlocking {
+    fun `get_segment_ahead returns next named sector ahead`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         // routePointIndex=50, before fromIndex=100 of "Monte Sante Marie"
@@ -225,7 +209,7 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `get_segment_ahead reports current sector when inside one`() = runBlocking {
+    fun `get_segment_ahead reports current sector when inside one`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val ctx = defaultContext.copy(routePointIndex = 150) // inside fromIndex=100..toIndex=200
@@ -235,7 +219,7 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `get_segment_ahead returns no more segments at end of route`() = runBlocking {
+    fun `get_segment_ahead returns no more segments at end of route`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val ctx = defaultContext.copy(routePointIndex = 9999)
@@ -257,7 +241,7 @@ class CyclingToolExecutorTest {
     // region get_weather_forecast Tests
 
     @Test
-    fun `get_weather_forecast returns location and summary`() = runBlocking {
+    fun `get_weather_forecast returns location and summary`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result =
@@ -268,17 +252,28 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `get_weather_forecast respects hours_ahead parameter`() = runBlocking {
+    fun `get_weather_forecast filters by current clock hour`() = runTest {
+        val executor = createExecutor()
+        executor.initialize("test-route")
+        // rideStartHour=8, elapsedMs=3_600_000 (1 hour) → currentHour=9
+        // Hourly data has hours 8,9,10,11 → filter hour >= 9 → returns hours 9,10,11
+        val ctx = defaultContext.copy(rideStartHour = 8, elapsedMs = 3_600_000L)
+        val result = executor.execute(CyclingToolDefinitions.GET_WEATHER_FORECAST, "{}", ctx)
+        assertTrue("hourly" in result)
+        // Hour 8 should be excluded (already past)
+        assertFalse("\"hour\":8" in result.replace(" ", ""))
+    }
+
+    @Test
+    fun `get_weather_forecast respects hours_ahead parameter`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result =
             executor.execute(
                 CyclingToolDefinitions.GET_WEATHER_FORECAST,
                 """{"hours_ahead": 1}""",
-                defaultContext.copy(elapsedMs = 0L),
+                defaultContext.copy(rideStartHour = 8, elapsedMs = 0L),
             )
-        // With elapsedMs=0, startHour=0, and hours_ahead=1, we get hours[0..1] = 2 entries
-        // Just verify the response is valid and contains hourly data
         assertTrue("hourly" in result)
         assertTrue("temp_c" in result)
     }
@@ -288,7 +283,7 @@ class CyclingToolExecutorTest {
     // region get_route_alternatives Tests
 
     @Test
-    fun `get_route_alternatives returns upcoming gravel sectors`() = runBlocking {
+    fun `get_route_alternatives returns upcoming gravel sectors`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result =
@@ -302,12 +297,11 @@ class CyclingToolExecutorTest {
     // region find_nearby_poi Tests
 
     @Test
-    fun `find_nearby_poi returns pois within default radius`() = runBlocking {
+    fun `find_nearby_poi returns pois within default radius`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
-        // distanceTravelledKm=5.0, radius=5 → should find Bar Il Casato at km 12 (7km away,
-        // outside)
-        // but Fonte di Siena at km 0 (5km away, within) and Cicli Pieri at km 4 (1km away)
+        // distanceTravelledKm=5.0, radius=5 → Fonte di Siena at km 0 (5km away, at boundary)
+        // and Cicli Pieri at km 4 (1km away, within)
         val ctx = defaultContext.copy(distanceTravelledKm = 5.0f)
         val result = executor.execute(CyclingToolDefinitions.FIND_NEARBY_POI, "{}", ctx)
         assertTrue("pois" in result)
@@ -315,7 +309,7 @@ class CyclingToolExecutorTest {
     }
 
     @Test
-    fun `find_nearby_poi filters by category`() = runBlocking {
+    fun `find_nearby_poi filters by category`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result =
@@ -334,7 +328,7 @@ class CyclingToolExecutorTest {
     // region get_rider_profile Tests
 
     @Test
-    fun `get_rider_profile returns ftp and zones`() = runBlocking {
+    fun `get_rider_profile returns ftp and zones`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result =
@@ -349,7 +343,7 @@ class CyclingToolExecutorTest {
     // region Unknown Tool Tests
 
     @Test
-    fun `execute returns error for unknown tool`() = runBlocking {
+    fun `execute returns error for unknown tool`() = runTest {
         val executor = createExecutor()
         executor.initialize("test-route")
         val result = executor.execute("unknown_tool", "{}", defaultContext)

@@ -1,12 +1,12 @@
 package com.monday8am.edgelab.agent.cycling
 
 import co.touchlab.kermit.Logger
-import com.monday8am.edgelab.data.route.RouteRepository
 import com.monday8am.edgelab.data.route.SegmentRepository
 import com.monday8am.edgelab.data.route.SegmentsData
 import com.monday8am.edgelab.data.route.WeatherData
 import com.monday8am.edgelab.data.route.WeatherRepository
 import com.monday8am.edgelab.data.testing.ToolSpecification
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -27,26 +27,23 @@ import kotlinx.serialization.json.put
 class CyclingToolExecutor(
     private val segmentRepository: SegmentRepository,
     private val weatherRepository: WeatherRepository,
-    private val routeRepository: RouteRepository,
 ) {
 
     private val logger = Logger.withTag("CyclingToolExecutor")
 
     private var cachedSegments: SegmentsData? = null
     private var cachedWeather: WeatherData? = null
-    private var cachedTotalDistanceKm: Float = 0f
 
     val toolDefinitions: List<ToolSpecification>
         get() = CyclingToolDefinitions.ALL
 
-    /** Pre-loads route, segment, and weather data for [routeId]. Call once per ride session. */
+    /** Pre-loads segment and weather data for [routeId]. Call once per ride session. */
     suspend fun initialize(routeId: String) {
         cachedSegments = segmentRepository.getSegments(routeId).getOrNull()
         cachedWeather = weatherRepository.getWeather(routeId).getOrNull()
-        cachedTotalDistanceKm = routeRepository.getRoute(routeId).getOrNull()?.distanceKm ?: 0f
         logger.i {
             "Initialized: route=$routeId segments=${cachedSegments != null}" +
-                " weather=${cachedWeather != null} distanceKm=$cachedTotalDistanceKm"
+                " weather=${cachedWeather != null}"
         }
     }
 
@@ -61,7 +58,9 @@ class CyclingToolExecutor(
         val params =
             try {
                 Json.parseToJsonElement(paramsJson).jsonObject
-            } catch (e: Exception) {
+            } catch (e: SerializationException) {
+                JsonObject(emptyMap())
+            } catch (e: IllegalArgumentException) {
                 JsonObject(emptyMap())
             }
         return when (toolName) {
@@ -171,8 +170,8 @@ class CyclingToolExecutor(
                 ?: return buildJsonObject { put("error", "Weather data not loaded") }.toString()
 
         val hoursAhead = params["hours_ahead"]?.jsonPrimitive?.intOrNull ?: 3
-        val startHour = (ctx.elapsedMs / 3_600_000L).toInt().coerceIn(0, 23)
-        val hours = weather.hourly.filter { it.hour >= startHour }.take(hoursAhead + 1)
+        val currentHour = (ctx.rideStartHour + ctx.elapsedMs / 3_600_000L).toInt().coerceIn(0, 23)
+        val hours = weather.hourly.filter { it.hour >= currentHour }.take(hoursAhead + 1)
 
         return buildJsonObject {
                 put("location", weather.location)
