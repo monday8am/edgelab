@@ -5,6 +5,7 @@ import com.monday8am.edgelab.data.route.GravelSector
 import com.monday8am.edgelab.data.route.SegmentData
 import com.monday8am.edgelab.data.route.SegmentRepository
 import com.monday8am.edgelab.data.route.SegmentsData
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -92,6 +93,7 @@ class AssetSegmentRepository(private val context: Context) : SegmentRepository {
                         },
                 )
             }
+                .onFailure { if (it is CancellationException) throw it }
         }
 
     override fun segmentsFlow(routeId: String): Flow<SegmentsData> = flow {

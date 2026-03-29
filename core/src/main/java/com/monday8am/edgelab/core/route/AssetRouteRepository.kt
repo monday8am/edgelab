@@ -8,6 +8,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -42,7 +43,7 @@ class AssetRouteRepository(private val context: Context) : RouteRepository {
                 distanceKm = computeDistanceKm(coords),
                 coordinates = coords,
             )
-        }
+        }.onFailure { if (it is CancellationException) throw it }
     }
 
     override fun routeFlow(routeId: String): Flow<RouteData> = flow {

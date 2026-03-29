@@ -4,6 +4,7 @@ import android.content.Context
 import com.monday8am.edgelab.data.route.HourlyWeather
 import com.monday8am.edgelab.data.route.WeatherData
 import com.monday8am.edgelab.data.route.WeatherRepository
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -69,6 +70,7 @@ class AssetWeatherRepository(private val context: Context) : WeatherRepository {
                         },
                 )
             }
+                .onFailure { if (it is CancellationException) throw it }
         }
 
     override fun weatherFlow(routeId: String): Flow<WeatherData> = flow {
