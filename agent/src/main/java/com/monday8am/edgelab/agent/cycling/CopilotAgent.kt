@@ -21,10 +21,19 @@ class CopilotAgent(
     private val tools: List<CyclingOpenApiTool> =
         CyclingToolDefinitions.ALL.map { spec -> CyclingOpenApiTool(spec, toolExecutor) }
 
-    /** Pre-loads route data and registers tools with the inference engine. */
-    suspend fun initialize(routeId: String) {
+    @Volatile private var isInitialized = false
+
+    /**
+     * Pre-loads route data and registers tools with the inference engine.
+     *
+     * @return [Result.failure] if tool registration fails (e.g. engine not ready).
+     */
+    suspend fun initialize(routeId: String): Result<Unit> {
         toolExecutor.initialize(routeId)
-        inferenceEngine.setToolsAndResetConversation(tools)
+        return inferenceEngine
+            .setToolsAndResetConversation(tools)
+            .onSuccess { isInitialized = true }
+            .onFailure { e -> logger.e("Failed to register tools with inference engine", e) }
     }
 
     /**
@@ -33,6 +42,10 @@ class CopilotAgent(
      * @return [AgentResponse] with the natural language reply and any tool calls made.
      */
     suspend fun ask(question: String, rideContext: RideContext): AgentResponse {
+        if (!isInitialized) {
+            logger.w { "ask() called before initialize()" }
+            return AgentResponse(text = MODEL_NOT_READY_MESSAGE, toolCalls = emptyList())
+        }
         tools.forEach { tool ->
             tool.currentContext = rideContext
             tool.clearCalls()

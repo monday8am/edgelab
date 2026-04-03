@@ -26,6 +26,7 @@ class CopilotAgentTest {
     private class FakeLocalInferenceEngine(
         private val promptResult: Result<String> = Result.success("Test response"),
         private val simulateFirstToolCall: Boolean = false,
+        private val setToolsResult: Result<Unit> = Result.success(Unit),
     ) : LocalInferenceEngine {
         var setToolsCallCount = 0
         var promptCallCount = 0
@@ -36,7 +37,7 @@ class CopilotAgentTest {
         override fun setToolsAndResetConversation(tools: List<Any>): Result<Unit> {
             setToolsCallCount++
             registeredTools = tools
-            return Result.success(Unit)
+            return setToolsResult
         }
 
         override suspend fun prompt(prompt: String): Result<String> {
@@ -183,6 +184,31 @@ class CopilotAgentTest {
         agent.initialize("test-route")
 
         assertEquals(6, engine.registeredTools.size)
+    }
+
+    @Test
+    fun `initialize returns failure when engine tool registration fails`() = runTest {
+        val (agent, _) =
+            createAgent(
+                FakeLocalInferenceEngine(
+                    setToolsResult = Result.failure(RuntimeException("engine not ready"))
+                )
+            )
+
+        val result = agent.initialize("test-route")
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `ask returns fallback when called before initialize`() = runTest {
+        val (agent, _) = createAgent()
+        // No initialize() call
+
+        val response = agent.ask("What's ahead?", defaultContext)
+
+        assertEquals(CopilotAgent.MODEL_NOT_READY_MESSAGE, response.text)
+        assertTrue(response.toolCalls.isEmpty())
     }
 
     // endregion
