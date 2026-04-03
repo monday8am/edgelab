@@ -22,4 +22,5 @@ dependencies {
     // Note: LiteRT-LM is only used in :app module (Android implementation)
     // :agent module is pure Kotlin/JVM and uses interfaces only
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
 }
