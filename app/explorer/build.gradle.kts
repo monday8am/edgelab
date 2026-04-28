@@ -24,12 +24,12 @@ fun getKeystoreProperty(key: String, envVar: String): String? =
 
 android {
     namespace = "com.monday8am.edgelab.explorer"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.monday8am.edgelab.explorer"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 

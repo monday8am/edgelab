@@ -2,11 +2,11 @@ package com.monday8am.edgelab.agent.cycling
 
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.OpenApiTool
-import com.google.gson.JsonElement
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import java.util.Collections
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 
 /**
  * OpenApiTool that routes execution to [CyclingToolExecutor] with a live [RideContext].
