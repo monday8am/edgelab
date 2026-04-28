@@ -54,11 +54,10 @@ class CopilotAgent(
         val prompt = buildPrompt(question, rideContext)
         val result = inferenceEngine.prompt(prompt)
 
-        val text =
-            result.getOrElse { e ->
-                logger.e("Inference failed", e)
-                MODEL_NOT_READY_MESSAGE
-            }
+        val text = result.getOrElse { e ->
+            logger.e("Inference failed", e)
+            MODEL_NOT_READY_MESSAGE
+        }
 
         val toolCalls = tools.flatMap { it.calls }
         return AgentResponse(text = text, toolCalls = toolCalls)

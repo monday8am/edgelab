@@ -237,11 +237,10 @@ class CyclingToolExecutor(
         val category = params["category"]?.jsonPrimitive?.contentOrNull
         val radiusKm = params["radius_km"]?.jsonPrimitive?.floatOrNull ?: 5f
 
-        val filtered =
-            STRADE_BIANCHE_POIS.filter { poi ->
-                (category == null || poi.category == category) &&
-                    kotlin.math.abs(poi.kmFromStart - ctx.distanceTravelledKm) <= radiusKm
-            }
+        val filtered = STRADE_BIANCHE_POIS.filter { poi ->
+            (category == null || poi.category == category) &&
+                kotlin.math.abs(poi.kmFromStart - ctx.distanceTravelledKm) <= radiusKm
+        }
 
         return buildJsonObject {
                 category?.let { put("category_filter", it) }

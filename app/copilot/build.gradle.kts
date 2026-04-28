@@ -34,8 +34,7 @@ android {
 
         // HuggingFace OAuth client ID (from gradle.properties or environment)
         val hfClientId =
-            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID")
-                ?: ""
+            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID") ?: ""
         buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
 
         // AppAuth redirect scheme (required by AppAuth library manifest)

@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.monday8am.edgelab.core"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 31
@@ -19,9 +19,7 @@ android {
 
     kotlin { jvmToolchain(17) }
 
-    buildFeatures {
-        buildConfig = true
-    }
+    buildFeatures { buildConfig = true }
 }
 
 dependencies {
