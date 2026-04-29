@@ -1,7 +1,8 @@
 package com.monday8am.edgelab.core.download
 
-import android.content.Context
+import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
@@ -20,18 +21,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class ModelDownloadManagerImpl(
-    context: Context,
+    context: android.content.Context,
     private val authRepository: AuthRepository,
+    private val wifiOnly: Boolean = false,
     private val workManager: WorkManager = WorkManager.getInstance(context),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelDownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
+    private val downloadMutex = Mutex()
 
-    // Initialize with current disk state to avoid race condition
     private val downloadedFilenames = MutableStateFlow(scanDiskFiles())
 
     override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>> =
@@ -43,11 +47,9 @@ class ModelDownloadManagerImpl(
             .flowOn(dispatcher)
 
     init {
-        // Observe WorkManager to update disk state when downloads complete
         scope.launch {
             workManager.getWorkInfosByTagFlow(WORK_TAG).collect { workInfos ->
-                val hasNewCompletion = workInfos.any { it.state == WorkInfo.State.SUCCEEDED }
-                if (hasNewCompletion) {
+                if (workInfos.any { it.state == WorkInfo.State.SUCCEEDED }) {
                     refreshDiskState()
                 }
             }
@@ -60,18 +62,13 @@ class ModelDownloadManagerImpl(
     ): Map<String, ModelDownloadManager.Status> {
         val statusMap = mutableMapOf<String, ModelDownloadManager.Status>()
 
-        // 1. Mark files on disk as Completed
         downloadedFiles.forEach { filename ->
             statusMap[filename] =
                 ModelDownloadManager.Status.Completed(File(getModelPath(filename)))
         }
 
-        // 2. Active work takes precedence over disk state
         workInfos.forEach { info ->
             val filename = info.extractBundleFilename() ?: return@forEach
-
-            // Only overlay if work is still active (not finished)
-            // Finished work defers to disk scan for source of truth
             if (!info.state.isFinished) {
                 statusMap[filename] = info.toStatus()
             }
@@ -80,9 +77,8 @@ class ModelDownloadManagerImpl(
         return statusMap
     }
 
-    private fun scanDiskFiles(): Set<String> {
-        return File(modelDestinationPath).listFiles()?.map { it.name }?.toSet() ?: emptySet()
-    }
+    private fun scanDiskFiles(): Set<String> =
+        File(modelDestinationPath).listFiles()?.map { it.name }?.toSet() ?: emptySet()
 
     private fun refreshDiskState() {
         downloadedFilenames.value = scanDiskFiles()
@@ -93,15 +89,8 @@ class ModelDownloadManagerImpl(
     override suspend fun deleteModel(bundleFilename: String): Boolean =
         withContext(dispatcher) {
             val modelFile = File(getModelPath(bundleFilename))
-            val deleted =
-                if (modelFile.exists()) {
-                    modelFile.delete()
-                } else {
-                    true // Already deleted
-                }
-            if (deleted) {
-                refreshDiskState()
-            }
+            val deleted = if (modelFile.exists()) modelFile.delete() else true
+            if (deleted) refreshDiskState()
             deleted
         }
 
@@ -109,25 +98,23 @@ class ModelDownloadManagerImpl(
         modelId: String,
         downloadUrl: String,
         bundleFilename: String,
-    ) {
+    ): Boolean =
         withContext(dispatcher) {
-            val destinationFile = File(getModelPath(bundleFilename))
+            if (File(getModelPath(bundleFilename)).exists()) return@withContext true
+            if (findRunningWork("model-download-$modelId") != null) return@withContext true
 
-            if (destinationFile.exists()) {
-                return@withContext
-            }
+            downloadMutex.withLock {
+                val activeCount =
+                    workManager.getWorkInfosByTag(WORK_TAG).get().count { !it.state.isFinished }
+                if (activeCount >= MAX_CONCURRENT_DOWNLOADS) return@withContext false
 
-            val workName = "model-download-$modelId"
-            val existingWork = findRunningWork(workName)
-
-            if (existingWork == null) {
                 val token = authRepository.authToken.value
-                val workRequest = createDownloadWorkRequest(modelId, downloadUrl, destinationFile, token)
-                workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
+                val workRequest =
+                    createDownloadWorkRequest(modelId, downloadUrl, File(getModelPath(bundleFilename)), token)
+                workManager.enqueueUniqueWork("model-download-$modelId", ExistingWorkPolicy.KEEP, workRequest)
             }
-            // Status updates come through modelsStatus flow
+            true
         }
-    }
 
     private fun createDownloadWorkRequest(
         modelId: String,
@@ -135,15 +122,20 @@ class ModelDownloadManagerImpl(
         destinationFile: File,
         token: String?,
     ): OneTimeWorkRequest {
-        val requiresUnzip = downloadUrl.endsWith(".zip", ignoreCase = true)
+        val constraints =
+            if (wifiOnly) {
+                Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()
+            } else {
+                Constraints.NONE
+            }
 
-        return OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
+        return OneTimeWorkRequestBuilder<DownloadWorker>()
+            .setConstraints(constraints)
             .setInputData(
                 workDataOf(
-                    DownloadUnzipWorker.KEY_URL to downloadUrl,
-                    DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
-                    DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
-                    DownloadUnzipWorker.KEY_AUTH_TOKEN to token,
+                    DownloadWorker.KEY_URL to downloadUrl,
+                    DownloadWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
+                    DownloadWorker.KEY_AUTH_TOKEN to token,
                 )
             )
             .addTag(WORK_TAG)
@@ -171,38 +163,31 @@ class ModelDownloadManagerImpl(
         private const val WORK_TAG = "model-download"
         private const val MODEL_ID_PREFIX = "model-id:"
         private const val BUNDLE_FILENAME_PREFIX = "bundle-filename:"
+        private const val MAX_CONCURRENT_DOWNLOADS = 3
     }
 }
 
-private fun WorkInfo.extractBundleFilename(): String? {
-    return tags.firstOrNull { it.startsWith("bundle-filename:") }?.removePrefix("bundle-filename:")
-}
+private fun WorkInfo.extractBundleFilename(): String? =
+    tags.firstOrNull { it.startsWith("bundle-filename:") }?.removePrefix("bundle-filename:")
 
 private fun WorkInfo.toStatus(): ModelDownloadManager.Status =
     when (state) {
         WorkInfo.State.ENQUEUED,
-        WorkInfo.State.BLOCKED -> {
-            ModelDownloadManager.Status.Pending
-        }
+        WorkInfo.State.BLOCKED -> ModelDownloadManager.Status.Pending
 
         WorkInfo.State.RUNNING -> {
-            val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
+            val progress = progress.getFloat(DownloadWorker.KEY_PROGRESS, 0f)
             ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
         }
 
-        WorkInfo.State.SUCCEEDED -> {
-            // This case is typically not reached since we defer to disk scan
-            ModelDownloadManager.Status.Completed(File(""))
-        }
+        WorkInfo.State.SUCCEEDED -> ModelDownloadManager.Status.Completed(File(""))
 
         WorkInfo.State.FAILED -> {
             val errorMessage =
-                outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
+                outputData.getString(DownloadWorker.KEY_ERROR_MESSAGE)
                     ?: "Download failed due to an unknown error."
             ModelDownloadManager.Status.Failed(errorMessage)
         }
 
-        WorkInfo.State.CANCELLED -> {
-            ModelDownloadManager.Status.Cancelled
-        }
+        WorkInfo.State.CANCELLED -> ModelDownloadManager.Status.Cancelled
     }

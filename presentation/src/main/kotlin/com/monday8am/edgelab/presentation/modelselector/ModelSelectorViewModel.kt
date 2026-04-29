@@ -32,6 +32,7 @@ data class UiState(
     val isLoadingCatalog: Boolean = true,
     val catalogError: String? = null,
     val isLoggedIn: Boolean = false,
+    val showDownloadLimitDialog: Boolean = false,
 )
 
 enum class GroupingMode {
@@ -88,6 +89,8 @@ sealed class UiAction {
 
     data object ToggleAllGroups : UiAction()
 
+    data object DismissDownloadLimitDialog : UiAction()
+
     internal data object Initialize : UiAction()
 }
 
@@ -111,6 +114,7 @@ class ModelSelectorViewModelImpl(
     private data class ViewModelState(
         val groupingMode: GroupingMode = GroupingMode.Family,
         val collapsedGroupIds: Set<String> = emptySet(),
+        val showDownloadLimitDialog: Boolean = false,
     )
 
     private val viewModelState = MutableStateFlow(ViewModelState())
@@ -147,6 +151,8 @@ class ModelSelectorViewModelImpl(
             is UiAction.SetGroupingMode -> setGroupingMode(action.mode)
             is UiAction.ToggleGroup -> toggleGroup(action.groupId)
             is UiAction.ToggleAllGroups -> toggleAllGroups()
+            is UiAction.DismissDownloadLimitDialog ->
+                viewModelState.value = viewModelState.value.copy(showDownloadLimitDialog = false)
         }
     }
 
@@ -161,11 +167,15 @@ class ModelSelectorViewModelImpl(
     private fun startDownload(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
         scope.launch(ioDispatcher) {
-            modelDownloadManager.downloadModel(
-                model.modelId,
-                model.downloadUrl,
-                model.bundleFilename,
-            )
+            val accepted =
+                modelDownloadManager.downloadModel(
+                    model.modelId,
+                    model.downloadUrl,
+                    model.bundleFilename,
+                )
+            if (!accepted) {
+                viewModelState.value = viewModelState.value.copy(showDownloadLimitDialog = true)
+            }
         }
     }
 
@@ -235,6 +245,7 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Loading models...",
                     isLoggedIn = isLoggedIn,
                     groupingMode = viewModelState.groupingMode,
+                    showDownloadLimitDialog = viewModelState.showDownloadLimitDialog,
                 )
 
             is RepositoryState.Error ->
@@ -244,6 +255,7 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Error: ${loadingState.message}",
                     isLoggedIn = isLoggedIn,
                     groupingMode = viewModelState.groupingMode,
+                    showDownloadLimitDialog = viewModelState.showDownloadLimitDialog,
                 )
 
             is RepositoryState.Success -> {
@@ -296,6 +308,7 @@ class ModelSelectorViewModelImpl(
                     statusMessage =
                         currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
                             ?: "Select a model",
+                    showDownloadLimitDialog = viewModelState.showDownloadLimitDialog,
                 )
             }
         }

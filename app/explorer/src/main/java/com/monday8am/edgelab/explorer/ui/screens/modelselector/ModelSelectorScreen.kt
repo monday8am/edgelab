@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -118,6 +120,26 @@ fun ModelSelectorScreen(
         LogoutConfirmationDialog(
             onDismiss = { showLogoutDialog = false },
             onConfirm = { viewModel.onUiAction(UiAction.Logout) },
+        )
+    }
+
+    if (uiState.showDownloadLimitDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onUiAction(UiAction.DismissDownloadLimitDialog) },
+            title = { Text("Download limit reached") },
+            text = {
+                Text(
+                    "Maximum of 3 simultaneous downloads reached. " +
+                        "Please wait for a download to finish before starting another."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onUiAction(UiAction.DismissDownloadLimitDialog) }
+                ) {
+                    Text("OK")
+                }
+            },
         )
     }
 }

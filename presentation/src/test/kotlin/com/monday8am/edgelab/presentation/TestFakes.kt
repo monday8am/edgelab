@@ -45,6 +45,7 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
 internal class FakeModelDownloadManager(
     private val progressSteps: List<Float> = emptyList(),
     private val shouldFail: Boolean = false,
+    private val shouldReject: Boolean = false,
     private val modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> =
         MutableStateFlow(emptyMap()),
 ) : ModelDownloadManager {
@@ -53,9 +54,15 @@ internal class FakeModelDownloadManager(
         modelId: String,
         downloadUrl: String,
         bundleFilename: String,
-    ) {
+    ): Boolean {
+        if (shouldReject) return false
         if (shouldFail) {
-            throw Exception("Download failed")
+            modelsStatusFlow.update {
+                it +
+                    (bundleFilename to
+                        ModelDownloadManager.Status.Failed("Simulated download failure"))
+            }
+            return true
         }
 
         progressSteps.forEach { progress ->
@@ -68,6 +75,7 @@ internal class FakeModelDownloadManager(
                 (bundleFilename to
                     ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
         }
+        return true
     }
 
     override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>>

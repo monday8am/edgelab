@@ -21,6 +21,11 @@ android {
     kotlin { jvmToolchain(17) }
 
     buildFeatures { buildConfig = true }
+
+    lint {
+        // foregroundServiceType is declared in consuming app manifests, not in the library
+        disable += "SpecifyForegroundServiceType"
+    }
 }
 
 dependencies {

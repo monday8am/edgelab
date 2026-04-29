@@ -40,10 +40,9 @@ object CoreDependencies {
      */
     fun createDownloadManager(
         context: Context,
-        authRepository: AuthRepository
-    ): ModelDownloadManager {
-        return ModelDownloadManagerImpl(context, authRepository)
-    }
+        authRepository: AuthRepository,
+        wifiOnly: Boolean = false,
+    ): ModelDownloadManager = ModelDownloadManagerImpl(context, authRepository, wifiOnly)
 
     /**
      * Creates an OAuth manager instance.

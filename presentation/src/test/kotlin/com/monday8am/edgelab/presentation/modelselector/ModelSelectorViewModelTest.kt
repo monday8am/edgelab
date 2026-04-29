@@ -267,6 +267,40 @@ class ModelSelectorViewModelTest {
         viewModel.dispose()
     }
 
+    @Test
+    fun `DownloadModel should show limit dialog when rejected`() = runTest {
+        fakeRepository.setModels(testModels)
+        val downloadManager = FakeModelDownloadManager(shouldReject = true)
+        val viewModel = createViewModel(downloadManager = downloadManager)
+        advanceUntilIdle()
+
+        viewModel.onUiAction(UiAction.DownloadModel(model1.modelId))
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showDownloadLimitDialog)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `DismissDownloadLimitDialog should hide dialog`() = runTest {
+        fakeRepository.setModels(testModels)
+        val downloadManager = FakeModelDownloadManager(shouldReject = true)
+        val viewModel = createViewModel(downloadManager = downloadManager)
+        advanceUntilIdle()
+
+        viewModel.onUiAction(UiAction.DownloadModel(model1.modelId))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showDownloadLimitDialog)
+
+        viewModel.onUiAction(UiAction.DismissDownloadLimitDialog)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showDownloadLimitDialog)
+
+        viewModel.dispose()
+    }
+
     // endregion
 
     // region Delete Model Tests
