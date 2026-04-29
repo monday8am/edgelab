@@ -136,6 +136,7 @@ class ModelDownloadManagerImpl(
                     DownloadWorker.KEY_URL to downloadUrl,
                     DownloadWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadWorker.KEY_AUTH_TOKEN to token,
+                    DownloadWorker.KEY_MODEL_ID to modelId,
                 )
             )
             .addTag(WORK_TAG)

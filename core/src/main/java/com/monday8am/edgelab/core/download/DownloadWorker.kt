@@ -128,6 +128,8 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
 
     private fun createForegroundInfo(progress: Int): ForegroundInfo {
         ensureNotificationChannel()
+        val modelId = inputData.getString(KEY_MODEL_ID) ?: ""
+        val notificationId = deriveNotificationId(modelId)
         val notification =
             NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
                 .setContentTitle("Downloading model")
@@ -138,7 +140,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 .setOnlyAlertOnce(true)
                 .build()
         return ForegroundInfo(
-            NOTIFICATION_ID,
+            notificationId,
             notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
@@ -164,9 +166,14 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_ERROR_MESSAGE = "KEY_ERROR_MESSAGE"
         const val KEY_AUTH_TOKEN = "KEY_AUTH_TOKEN"
+        const val KEY_MODEL_ID = "KEY_MODEL_ID"
 
         private const val NOTIFICATION_CHANNEL_ID = "model_download_channel"
-        private const val NOTIFICATION_ID = 1001
+        private const val BASE_NOTIFICATION_ID = 1001
         private const val BUFFER_SIZE = 64 * 1024
+
+        private fun deriveNotificationId(modelId: String): Int {
+            return BASE_NOTIFICATION_ID + modelId.hashCode()
+        }
     }
 }
