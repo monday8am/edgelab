@@ -80,14 +80,13 @@ class ModelRepositoryImpl(
 
     override fun updateModel(modelId: String, updater: (ModelConfiguration) -> ModelConfiguration) {
         val currentModels = _models.value
-        val updatedModels =
-            currentModels.map { model ->
-                if (model.modelId == modelId) {
-                    updater(model)
-                } else {
-                    model
-                }
+        val updatedModels = currentModels.map { model ->
+            if (model.modelId == modelId) {
+                updater(model)
+            } else {
+                model
             }
+        }
         _models.value = updatedModels
     }
 }

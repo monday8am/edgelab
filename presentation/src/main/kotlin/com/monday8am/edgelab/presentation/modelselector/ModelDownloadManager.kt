@@ -31,7 +31,8 @@ interface ModelDownloadManager {
      * Starts downloading a model. Status updates come through [modelsStatus]. If the model already
      * exists on disk, returns immediately.
      */
-    suspend fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String)
+    /** Returns false if the concurrent download limit has been reached. */
+    suspend fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String): Boolean
 
     /** Cancels all active downloads. */
     fun cancelDownload()

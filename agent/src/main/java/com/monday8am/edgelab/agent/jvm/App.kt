@@ -9,6 +9,8 @@ import com.google.ai.edge.litertlm.LogSeverity
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.Tool
+import com.google.ai.edge.litertlm.ToolSet
+import com.google.ai.edge.litertlm.tool
 
 private val gemma3n = "/Users/anton/Downloads/gemma3-1b-it-int4.litertlm"
 private val qwen3 = "/Users/anton/Downloads/qwen3_0.6b_q8_ekv4096.litertlm"
@@ -34,7 +36,9 @@ suspend fun main() {
                         "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
                     ),
                 tools =
-                    listOf(NativeLocationTools()), // Native LiteRT-LM tools with @Tool annotations
+                    listOf(
+                        tool(NativeLocationTools())
+                    ), // Native LiteRT-LM tools with @Tool annotations
                 samplerConfig = SamplerConfig(topK = 40, topP = 0.85, temperature = 0.2),
             )
 
@@ -47,7 +51,7 @@ suspend fun main() {
     }
 }
 
-private class NativeLocationTools {
+private class NativeLocationTools : ToolSet {
     @Tool(
         description =
             "No arguments required. Get the user's current location in latitude and longitude format"

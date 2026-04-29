@@ -5,11 +5,12 @@ plugins {
 
 android {
     namespace = "com.monday8am.edgelab.core"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 31
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.monday8am.edgelab"
     }
 
     compileOptions {
@@ -19,8 +20,11 @@ android {
 
     kotlin { jvmToolchain(17) }
 
-    buildFeatures {
-        buildConfig = true
+    buildFeatures { buildConfig = true }
+
+    lint {
+        // foregroundServiceType is declared in consuming app manifests, not in the library
+        disable += "SpecifyForegroundServiceType"
     }
 }
 

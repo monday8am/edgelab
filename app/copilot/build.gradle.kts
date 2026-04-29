@@ -21,12 +21,12 @@ fun getKeystoreProperty(key: String, envVar: String): String? =
 
 android {
     namespace = "com.monday8am.edgelab.copilot"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.monday8am.edgelab.copilot"
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -34,8 +34,7 @@ android {
 
         // HuggingFace OAuth client ID (from gradle.properties or environment)
         val hfClientId =
-            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID")
-                ?: ""
+            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID") ?: ""
         buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
 
         // AppAuth redirect scheme (required by AppAuth library manifest)

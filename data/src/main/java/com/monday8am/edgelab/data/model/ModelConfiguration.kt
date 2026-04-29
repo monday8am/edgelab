@@ -58,14 +58,13 @@ data class ModelConfiguration(
 
     /** Helper to format file size into human readable string. */
     val readableFileSize: String?
-        get() =
-            fileSizeBytes?.let { bytes ->
-                if (bytes >= 1024 * 1024 * 1024) {
-                    val sizeGB = bytes / (1024.0 * 1024.0 * 1024.0)
-                    "Size: ${"%.2f".format(sizeGB)} GB"
-                } else {
-                    val sizeMB = bytes / (1024 * 1024)
-                    "Size: $sizeMB MB"
-                }
+        get() = fileSizeBytes?.let { bytes ->
+            if (bytes >= 1024 * 1024 * 1024) {
+                val sizeGB = bytes / (1024.0 * 1024.0 * 1024.0)
+                "Size: ${"%.2f".format(sizeGB)} GB"
+            } else {
+                val sizeMB = bytes / (1024 * 1024)
+                "Size: $sizeMB MB"
             }
+        }
 }

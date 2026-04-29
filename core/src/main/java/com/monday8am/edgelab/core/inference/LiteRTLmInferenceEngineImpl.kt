@@ -10,7 +10,11 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
+import com.google.ai.edge.litertlm.OpenApiTool
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ToolProvider
+import com.google.ai.edge.litertlm.ToolSet
+import com.google.ai.edge.litertlm.tool
 import com.monday8am.edgelab.agent.core.LocalInferenceEngine
 import com.monday8am.edgelab.data.model.HardwareBackend
 import com.monday8am.edgelab.data.model.ModelConfiguration
@@ -188,10 +192,19 @@ class LiteRTLmInferenceEngineImpl(
                 ?: return Result.failure(IllegalStateException("Engine not initialized"))
         return runCatching {
             instance.conversation.close()
+            val toolProviders =
+                tools.map { t ->
+                    when (t) {
+                        is ToolProvider -> t
+                        is OpenApiTool -> tool(t)
+                        is ToolSet -> tool(t)
+                        else -> throw IllegalArgumentException("Unsupported tool type: ${t::class}")
+                    }
+                }
             val conversationConfig =
                 ConversationConfig(
                     systemInstruction = Contents.of("You are a helpful assistant."),
-                    tools = tools, // Use provided test-specific tools
+                    tools = toolProviders,
                     samplerConfig =
                         SamplerConfig(
                             topK = instance.modelConfig.defaultTopK,
