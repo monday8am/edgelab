@@ -33,12 +33,13 @@ Each feature gets its own package: `com.monday8am.edgelab.presentation.<feature>
 
 ## Testing
 
-- Tests in `presentation/src/test/kotlin/`
-- Shared fakes in `TestFakes.kt`
-- MUST use `StandardTestDispatcher` + `Dispatchers.setMain`/`resetMain`
-- MUST pass `testDispatcher` as `ioDispatcher`
-- MUST call `viewModel.dispose()` at end of every test
-- See `docs/testing.md` for complete template
+Load the **`edgelab-testing`** skill for:
+- Fake object patterns and rules
+- ViewModel test template
+- Critical coroutine-testing rules
+- Minimum coverage requirements
+
+Shared fakes live in `TestFakes.kt`. Tests live in `presentation/src/test/kotlin/`. See `docs/testing.md` for the complete template.
 
 ## Mandatory Deliverables
 
