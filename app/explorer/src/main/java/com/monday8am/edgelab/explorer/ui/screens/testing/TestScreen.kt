@@ -16,7 +16,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.explorer.Dependencies
-import com.monday8am.edgelab.data.model.HardwareBackend
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.testing.TestDomain
@@ -85,8 +83,8 @@ fun TestScreen(
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         isInitializing = state.isInitializing,
-        onRunTests = { useGpu, filter ->
-            viewModel.onUiAction(TestUiAction.RunTests(useGpu, filter))
+        onRunTests = { filter ->
+            viewModel.onUiAction(TestUiAction.RunTests(filter))
         },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
         onNavigateToTestDetails = onNavigateToTestDetails,
@@ -102,15 +100,12 @@ private fun TestContent(
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     isInitializing: Boolean,
-    onRunTests: (Boolean, TestDomain?) -> Unit,
+    onRunTests: (TestDomain?) -> Unit,
     onCancelTests: () -> Unit,
     onNavigateToTestDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var filterDomain by rememberSaveable { mutableStateOf<TestDomain?>(null) }
-    var useGpuBackend by rememberSaveable {
-        mutableStateOf(selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
-    }
 
     val displayedTests =
         if (isRunning || filterDomain == null) testStatuses
@@ -132,9 +127,7 @@ private fun TestContent(
         // 1. Top Card with Model Info
         ModelInfoCard(
             model = selectedModel,
-            useGpu = useGpuBackend,
             isRunning = isRunning || isInitializing,
-            onBackendToggle = { useGpuBackend = it },
         )
 
         if (isInitializing) {
@@ -160,7 +153,7 @@ private fun TestContent(
                     isCancelling = true
                     onCancelTests()
                 } else {
-                    onRunTests(useGpuBackend, filterDomain)
+                    onRunTests(filterDomain)
                 }
             },
             enabled = !isInitializing && !isCancelling,
@@ -182,8 +175,6 @@ private fun TestContent(
 @Composable
 private fun ModelInfoCard(
     model: ModelConfiguration,
-    useGpu: Boolean,
-    onBackendToggle: (Boolean) -> Unit,
     isRunning: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -202,20 +193,6 @@ private fun ModelInfoCard(
                 Text(
                     text = "${model.parameterCount}B params • ${model.contextLength} tokens",
                     style = MaterialTheme.typography.bodySmall,
-                )
-            }
-
-            // Right: CPU/GPU Toggle
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = spacedBy(4.dp)) {
-                Text(
-                    text = if (useGpu) "GPU" else "CPU",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Switch(
-                    checked = useGpu,
-                    enabled = !isRunning,
-                    onCheckedChange = { isChecked -> onBackendToggle(isChecked) },
                 )
             }
         }
@@ -315,7 +292,7 @@ private fun TestContentPreview() {
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,
-            onRunTests = { _, _ -> },
+            onRunTests = { _ -> },
             onCancelTests = {},
             onNavigateToTestDetails = {},
         )

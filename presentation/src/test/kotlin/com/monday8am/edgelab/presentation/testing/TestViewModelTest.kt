@@ -39,8 +39,8 @@ class TestViewModelTest {
 
     @Test
     fun `TestUiAction RunTests should accept nullable domain filter`() {
-        val actionWithFilter = TestUiAction.RunTests(useGpu = true, filterDomain = TestDomain.YAZIO)
-        val actionWithoutFilter = TestUiAction.RunTests(useGpu = false, filterDomain = null)
+        val actionWithFilter = TestUiAction.RunTests(filterDomain = TestDomain.YAZIO)
+        val actionWithoutFilter = TestUiAction.RunTests(filterDomain = null)
 
         assertEquals(TestDomain.YAZIO, actionWithFilter.filterDomain)
         assertEquals(null, actionWithoutFilter.filterDomain)

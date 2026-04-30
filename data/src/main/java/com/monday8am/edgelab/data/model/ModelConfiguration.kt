@@ -2,7 +2,6 @@ package com.monday8am.edgelab.data.model
 
 @kotlinx.serialization.Serializable
 enum class HardwareBackend {
-    CPU_ONLY,
     GPU_SUPPORTED,
     NPU_SUPPORTED,
 }

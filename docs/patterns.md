@@ -156,10 +156,10 @@ For ViewModel-local state (not from a repository):
 
 ```kotlin
 private sealed class ViewModelState {
-    data class Idle(val lastUseGpu: Boolean = false) : ViewModelState()
-    data class Running(val useGpu: Boolean, val filterDomain: TestDomain?) : ViewModelState()
+    data object Idle : ViewModelState()
+    data class Running(val filterDomain: TestDomain?) : ViewModelState()
 }
-private val viewModelState = MutableStateFlow<ViewModelState>(ViewModelState.Idle())
+private val viewModelState = MutableStateFlow<ViewModelState>(ViewModelState.Idle)
 ```
 
 **Anti-patterns:**
