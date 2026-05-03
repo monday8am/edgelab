@@ -105,7 +105,7 @@ private fun ModelListPreview() {
                         contextLength = 4096,
                         downloadUrl = "https://example.com/model.litertlm",
                         bundleFilename = "model1.litertlm",
-                        hardwareAcceleration = HardwareBackend.CPU_ONLY,
+                        hardwareAcceleration = HardwareBackend.NPU_SUPPORTED,
                     ),
                 isDownloaded = true,
                 downloadStatus = DownloadStatus.Completed,

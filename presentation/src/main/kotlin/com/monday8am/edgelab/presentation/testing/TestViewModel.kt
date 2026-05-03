@@ -58,7 +58,7 @@ data class TestStatus(
 }
 
 sealed class TestUiAction {
-    data class RunTests(val useGpu: Boolean, val filterDomain: TestDomain?) : TestUiAction()
+    data class RunTests(val filterDomain: TestDomain?) : TestUiAction()
 
     data object CancelTests : TestUiAction()
 }
@@ -81,20 +81,13 @@ class TestViewModelImpl(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private sealed class ViewModelState {
-        data class Idle(val lastUseGpu: Boolean = false) : ViewModelState()
+        data object Idle : ViewModelState()
 
-        data class Running(
-            val useGpu: Boolean,
-            val lastUseGpu: Boolean,
-            val filterDomain: TestDomain?,
-        ) : ViewModelState()
+        data class Running(val filterDomain: TestDomain?) : ViewModelState()
     }
 
     private var currentTestEngine: ToolCallingTestEngine? = null
-    private val viewModelState =
-        MutableStateFlow<ViewModelState>(
-            ViewModelState.Idle(initialModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
-        )
+    private val viewModelState = MutableStateFlow<ViewModelState>(ViewModelState.Idle)
 
     // Load tests on init
     private val loadedTests: StateFlow<List<TestCase>> =
@@ -111,43 +104,28 @@ class TestViewModelImpl(
         combine(viewModelState, loadedTests) { state, tests -> state to tests }
             .flatMapLatest { (state, tests) ->
                 when (state) {
-                    is ViewModelState.Idle ->
-                        flow { emit(createIdleUiState(state.lastUseGpu, tests)) }
+                    is ViewModelState.Idle -> flow { emit(createIdleUiState(tests)) }
                     is ViewModelState.Running ->
-                        executeTests(
-                                useGpu = state.useGpu,
-                                lastUseGpu = state.lastUseGpu,
-                                filterDomain = state.filterDomain,
-                                testCases = tests,
-                            )
-                            .map { execState -> deriveUiState(execState, tests) }
+                        executeTests(filterDomain = state.filterDomain, testCases = tests).map {
+                            execState ->
+                            deriveUiState(execState, tests)
+                        }
                 }
             }
             .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
-                initialValue = createIdleUiState(lastUseGpu = false, emptyList()),
+                initialValue = createIdleUiState(emptyList()),
             )
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
             is TestUiAction.RunTests -> {
-                val lastUseGpu =
-                    when (val current = viewModelState.value) {
-                        is ViewModelState.Idle -> current.lastUseGpu
-                        is ViewModelState.Running -> current.useGpu
-                    }
-                viewModelState.value =
-                    ViewModelState.Running(
-                        useGpu = uiAction.useGpu,
-                        lastUseGpu = lastUseGpu,
-                        filterDomain = uiAction.filterDomain,
-                    )
+                viewModelState.value = ViewModelState.Running(filterDomain = uiAction.filterDomain)
             }
             TestUiAction.CancelTests -> {
                 currentTestEngine?.cancel()
-                val lastUseGpu = (viewModelState.value as? ViewModelState.Running)?.useGpu ?: false
-                viewModelState.value = ViewModelState.Idle(lastUseGpu)
+                viewModelState.value = ViewModelState.Idle
             }
         }
     }
@@ -157,8 +135,6 @@ class TestViewModelImpl(
      * engine initialization, and test execution.
      */
     private fun executeTests(
-        useGpu: Boolean,
-        lastUseGpu: Boolean,
         filterDomain: TestDomain?,
         testCases: List<TestCase>,
     ): Flow<ExecutionState> = flow {
@@ -170,7 +146,7 @@ class TestViewModelImpl(
         val filteredTests =
             if (filterDomain == null) testCases else testCases.filter { it.domain == filterDomain }
 
-        val modelConfig = prepareModelConfig(useGpu, lastUseGpu)
+        val modelConfig = prepareModelConfig()
         val initialResults =
             TestResults(
                 statuses =
@@ -229,15 +205,8 @@ class TestViewModelImpl(
             .collect { emit(it) }
     }
 
-    private fun prepareModelConfig(useGpu: Boolean, lastUseGpu: Boolean): ModelConfiguration {
-        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
-
-        // Close session only if GPU setting changed
-        if (lastUseGpu != useGpu) {
-            inferenceEngine.closeSession()
-        }
-
-        return initialModel.copy(hardwareAcceleration = newBackend)
+    private fun prepareModelConfig(): ModelConfiguration {
+        return initialModel.copy(hardwareAcceleration = HardwareBackend.GPU_SUPPORTED)
     }
 
     private fun deriveUiState(state: ExecutionState, tests: List<TestCase>): TestUiState {
@@ -364,10 +333,9 @@ class TestViewModelImpl(
         return Pair(avgSpeed, totalTokens)
     }
 
-    private fun createIdleUiState(lastUseGpu: Boolean, tests: List<TestCase>): TestUiState {
-        val backend = if (lastUseGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
+    private fun createIdleUiState(tests: List<TestCase>): TestUiState {
         return TestUiState(
-            selectedModel = initialModel.copy(hardwareAcceleration = backend),
+            selectedModel = initialModel.copy(hardwareAcceleration = HardwareBackend.GPU_SUPPORTED),
             isRunning = false,
             isInitializing = false,
             frames = persistentMapOf(),

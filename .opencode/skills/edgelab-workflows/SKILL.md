@@ -28,4 +28,6 @@ When you add/rename/remove:
 
 | Command | Description |
 |---------|-------------|
+| `/review` | Review uncommitted changes, a commit, branch diff, or PR with EdgeLab-specific conventions |
+| `/commit-pr` | Commit, push, and create a GitHub PR (no Greptile loop) |
 | `/commit-pr-greptile` | Commit, create PR, poll Greptile review, auto-fix |
