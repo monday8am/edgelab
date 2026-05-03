@@ -102,7 +102,7 @@ If push is rejected due to remote having newer commits:
    - If `state` is `"CLOSED"` or `"MERGED"` → create a new PR
 
 2. **If no open PR exists**, create one:
-   - Extract info from commits: `git log origin/main..HEAD --oneline`
+   - Extract info from commits: `git log $(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|^refs/remotes/origin/||' || echo main)..HEAD --oneline`
    - Generate PR title (short, imperative, <70 chars)
    - Generate PR body with:
      - Summary section
