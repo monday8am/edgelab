@@ -38,12 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.data.auth.AuthorInfo
-import com.monday8am.edgelab.explorer.Dependencies
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 import com.monday8am.edgelab.presentation.authormanager.AuthorManagerViewModelImpl
 import com.monday8am.edgelab.presentation.authormanager.AuthorUiAction
 import com.monday8am.edgelab.presentation.authormanager.AuthorUiState
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 @Composable
@@ -51,7 +50,7 @@ fun AuthorManagerScreen(
     onNavigateBack: () -> Unit,
     viewModel: AndroidAuthorManagerViewModel = viewModel {
         AndroidAuthorManagerViewModel(
-            AuthorManagerViewModelImpl(authorRepository = Dependencies.authorRepository)
+            AuthorManagerViewModelImpl(authorRepository = ServiceLocator.authorRepository)
         )
     },
 ) {

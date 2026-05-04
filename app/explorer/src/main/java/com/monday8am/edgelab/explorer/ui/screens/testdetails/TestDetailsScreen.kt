@@ -3,11 +3,9 @@ package com.monday8am.edgelab.explorer.ui.screens.testdetails
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -26,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.explorer.Dependencies
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.testing.TestCaseDefinition
 import com.monday8am.edgelab.data.testing.TestDomain
 import com.monday8am.edgelab.data.testing.TestQueryDefinition
@@ -35,7 +33,6 @@ import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 import com.monday8am.edgelab.presentation.testdetails.TestDetailsUiAction
 import com.monday8am.edgelab.presentation.testdetails.TestDetailsViewModelImpl
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 @Composable
@@ -44,7 +41,7 @@ fun TestDetailsScreen(
     viewModel: AndroidTestDetailsViewModel =
         viewModel {
             AndroidTestDetailsViewModel(
-                TestDetailsViewModelImpl(testRepository = Dependencies.testRepository),
+                TestDetailsViewModelImpl(testRepository = ServiceLocator.testRepository),
             )
         },
 ) {

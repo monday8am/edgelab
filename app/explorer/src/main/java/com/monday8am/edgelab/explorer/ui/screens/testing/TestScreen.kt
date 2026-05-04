@@ -29,7 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.explorer.Dependencies
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.testing.TestDomain
@@ -53,19 +53,19 @@ fun TestScreen(
     viewModel: AndroidTestViewModel =
         viewModel(key = modelId) {
             val selectedModel =
-                Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
+                ServiceLocator.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
             val inferenceEngine = LiteRTLmInferenceEngineImpl()
 
             val modelPath =
-                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
+                (ServiceLocator.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
                     selectedModel.bundleFilename
                 )
 
             AndroidTestViewModel(
                 TestViewModelImpl(
                     initialModel = selectedModel,
-                    testRepository = Dependencies.testRepository,
+                    testRepository = ServiceLocator.testRepository,
                     modelPath = modelPath,
                     inferenceEngine = inferenceEngine,
                 ),
