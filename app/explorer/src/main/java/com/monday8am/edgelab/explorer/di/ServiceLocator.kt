@@ -1,4 +1,4 @@
-package com.monday8am.edgelab.explorer
+package com.monday8am.edgelab.explorer.di
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -22,16 +22,18 @@ import com.monday8am.edgelab.data.testing.AssetsTestRepository
 import com.monday8am.edgelab.data.testing.TestRepository
 import com.monday8am.edgelab.data.testing.TestRepositoryImpl
 import com.monday8am.edgelab.explorer.BuildConfig
+import com.monday8am.edgelab.explorer.MainActivity
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
 
 /**
  * Simple service locator for app dependencies. Centralizes dependency creation and avoids factory
  * boilerplate.
  */
-object Dependencies {
+object ServiceLocator {
     lateinit var appContext: Context
 
     val applicationScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
@@ -95,7 +97,7 @@ object Dependencies {
 
     val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
 
-    val json = kotlinx.serialization.json.Json {
+    val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
     }
@@ -107,6 +109,10 @@ object Dependencies {
             bundledRepository = AssetsTestRepository(),
             json = json
         )
+    }
+
+    fun init(context: Context) {
+        appContext = context.applicationContext
     }
 }
 

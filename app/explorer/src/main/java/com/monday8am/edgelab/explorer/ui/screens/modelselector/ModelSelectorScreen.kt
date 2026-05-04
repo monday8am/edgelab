@@ -21,7 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.explorer.Dependencies
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.explorer.ui.screens.testing.InitializationIndicator
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
@@ -41,15 +41,15 @@ fun ModelSelectorScreen(
     viewModel: AndroidModelSelectorViewModel = viewModel {
         AndroidModelSelectorViewModel(
             ModelSelectorViewModelImpl(
-                modelDownloadManager = Dependencies.modelDownloadManager,
-                modelRepository = Dependencies.modelRepository,
-                authRepository = Dependencies.authRepository,
+                modelDownloadManager = ServiceLocator.modelDownloadManager,
+                modelRepository = ServiceLocator.modelRepository,
+                authRepository = ServiceLocator.authRepository,
             )
         )
     },
 ) {
     val context = LocalContext.current
-    val oAuthManager = remember { Dependencies.oAuthManager }
+    val oAuthManager = remember { ServiceLocator.oAuthManager }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }

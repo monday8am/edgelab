@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.explorer.ui.navigation.AppNavigation
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 
@@ -18,13 +19,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize service locator with application context
-        Dependencies.appContext = applicationContext
-
         // Only handle intent if we are starting fresh, to avoid re-processing 
         // stale intents on recreation (e.g. rotation or process restoration)
         if (savedInstanceState == null) {
-            Dependencies.oAuthManager.onHandleIntent(intent)
+            ServiceLocator.oAuthManager.onHandleIntent(intent)
         }
 
         setContent {
@@ -38,13 +36,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Dependencies.oAuthManager.onHandleIntent(intent)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (isFinishing) {
-            Dependencies.dispose()
-        }
+        ServiceLocator.oAuthManager.onHandleIntent(intent)
     }
 }
