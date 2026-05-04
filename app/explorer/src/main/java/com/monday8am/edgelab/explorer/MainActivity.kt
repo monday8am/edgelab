@@ -38,4 +38,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         ServiceLocator.oAuthManager.onHandleIntent(intent)
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            ServiceLocator.dispose()
+        }
+    }
 }

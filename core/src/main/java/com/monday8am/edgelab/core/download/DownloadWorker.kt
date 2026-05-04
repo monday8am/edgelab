@@ -109,8 +109,6 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         var lastUpdateProgress = -1f
         var lastUpdateTime = 0L
 
-        Logger.d("Main thread? : ${Thread.currentThread().name}")
-
         while (input.read(buffer).also { bytesRead = it } != -1) {
             output.write(buffer, 0, bytesRead)
             bytesCopied += bytesRead
@@ -132,7 +130,6 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         ensureNotificationChannel()
         val modelId = inputData.getString(KEY_MODEL_ID) ?: ""
         val notificationId = deriveNotificationId(modelId)
-        Logger.d("Set progress: $progress")
         val notification =
             NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
                 .setContentTitle("Downloading model")

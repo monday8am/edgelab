@@ -8,12 +8,9 @@ class ExplorerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ServiceLocator.init(this)
-        StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().build())
-        StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().detectAll().build())
-    }
-
-    override fun onTerminate() {
-        super.onTerminate()
-        ServiceLocator.dispose()
+        if (BuildConfig.DEBUG) {
+            StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().build())
+            StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().detectAll().build())
+        }
     }
 }

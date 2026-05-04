@@ -45,7 +45,12 @@ class NotificationPermissionHandler(
             return
         }
         pendingAction = action
-        launcher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+        if (launcher != null) {
+            launcher?.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            pendingAction = null
+            onDenied?.invoke()
+        }
     }
 
     /** Call this from the ActivityResult callback. */
