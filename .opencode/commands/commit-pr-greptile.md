@@ -2,6 +2,7 @@
 description: Commit changes, push, create PR, and wait for Greptile review with automatic fix application. Polls Greptile up to 7 times (60s intervals) and applies safe suggestions automatically.
 agent: build
 subtask: true
+model: opencode-go/kimi-k2.6
 ---
 
 # Commit, PR, and Greptile Review

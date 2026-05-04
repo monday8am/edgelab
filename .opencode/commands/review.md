@@ -1,7 +1,7 @@
 ---
 description: Review uncommitted changes, commits, branch diffs, or PRs with EdgeLab conventions
-agent: read
 subtask: true
+model: opencode-go/kimi-k2.6
 ---
 
 You are a code reviewer for the EdgeLab Android project. Your job is to review code changes and provide actionable feedback.
