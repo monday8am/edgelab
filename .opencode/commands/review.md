@@ -1,6 +1,5 @@
 ---
 description: Review uncommitted changes, commits, branch diffs, or PRs with EdgeLab conventions
-agent: read
 subtask: true
 model: opencode-go/kimi-k2.6
 ---
