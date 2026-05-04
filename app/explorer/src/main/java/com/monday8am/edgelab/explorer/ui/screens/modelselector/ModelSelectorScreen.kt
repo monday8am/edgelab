@@ -1,6 +1,8 @@
 package com.monday8am.edgelab.explorer.ui.screens.modelselector
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.edgelab.core.permissions.NotificationPermissionHandler
 import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.explorer.ui.screens.testing.InitializationIndicator
@@ -55,6 +59,29 @@ fun ModelSelectorScreen(
     var selectedModelId by remember { mutableStateOf<String?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isAuthenticating by remember { mutableStateOf(false) }
+    val permissionHandler = remember {
+        NotificationPermissionHandler(
+            context,
+            onDenied = {
+                Toast.makeText(
+                        context,
+                        "Enable notifications in Settings to see download progress in background",
+                        Toast.LENGTH_LONG,
+                    )
+                    .show()
+            },
+        )
+    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            permissionHandler.onPermissionResult(isGranted)
+        }
+    DisposableEffect(permissionLauncher) {
+        permissionHandler.attachLauncher(permissionLauncher)
+        onDispose { permissionHandler.detachLauncher() }
+    }
 
     // Handle OAuth result when received from flow
     LaunchedEffect(Unit) {
@@ -103,12 +130,20 @@ fun ModelSelectorScreen(
             else -> uiState.statusMessage
         }
 
+    val onIntentWithPermission: (UiAction) -> Unit = { action ->
+        if (action is UiAction.DownloadModel) {
+            permissionHandler.request { viewModel.onUiAction(action) }
+        } else {
+            viewModel.onUiAction(action)
+        }
+    }
+
     ModelSelectorScreenContent(
         uiState = uiState,
         selectedModelId = selectedModelId,
         statusMessage = displayStatusMessage,
         modifier = Modifier,
-        onIntent = viewModel::onUiAction,
+        onIntent = onIntentWithPermission,
         onSelectModel = { selectedModelId = it },
         onLoginClick = launchOAuth,
         onLogoutClick = { showLogoutDialog = true },

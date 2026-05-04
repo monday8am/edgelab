@@ -1,6 +1,8 @@
 package com.monday8am.edgelab.copilot.ui.screens.onboard
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,8 +31,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.edgelab.core.permissions.NotificationPermissionHandler
 import com.monday8am.edgelab.copilot.Dependencies
 import com.monday8am.edgelab.copilot.Dependencies.oAuthManager
 import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
@@ -64,6 +69,37 @@ fun OnboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val permissionHandler = remember {
+        NotificationPermissionHandler(
+            context,
+            onDenied = {
+                Toast.makeText(
+                        context,
+                        "Enable notifications in Settings to see download progress in background",
+                        Toast.LENGTH_LONG,
+                    )
+                    .show()
+            },
+        )
+    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            permissionHandler.onPermissionResult(isGranted)
+        }
+    DisposableEffect(permissionLauncher) {
+        permissionHandler.attachLauncher(permissionLauncher)
+        onDispose { permissionHandler.detachLauncher() }
+    }
+
+    val onActionWithPermission: (UiAction) -> Unit = { action ->
+        if (action is UiAction.DownloadModel) {
+            permissionHandler.request { viewModel.onUiAction(action) }
+        } else {
+            viewModel.onUiAction(action)
+        }
+    }
 
     LaunchedEffect(Unit) {
         oAuthManager.oAuthResultFlow.collect { intent ->
@@ -77,10 +113,9 @@ fun OnboardScreen(
         }
     }
 
-
     OnboardScreenContent(
         uiState = uiState,
-        onAction = viewModel::onUiAction,
+        onAction = onActionWithPermission,
         onNavigateToSetup = onNavigateToSetup,
         onStartOAuth = { oAuthManager.startAuthorization() },
     )
