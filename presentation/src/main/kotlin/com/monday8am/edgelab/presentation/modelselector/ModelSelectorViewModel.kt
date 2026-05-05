@@ -166,7 +166,7 @@ class ModelSelectorViewModelImpl(
 
     private fun startDownload(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
-        scope.launch(ioDispatcher) {
+        scope.launch {
             val accepted =
                 modelDownloadManager.downloadModel(
                     model.modelId,
@@ -181,11 +181,12 @@ class ModelSelectorViewModelImpl(
 
     private fun cancelDownload(modelId: String) {
         modelDownloadManager.cancelDownload(modelId)
+        deleteModel(modelId)
     }
 
     private fun deleteModel(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
-        scope.launch(ioDispatcher) { modelDownloadManager.deleteModel(model.bundleFilename) }
+        scope.launch { modelDownloadManager.deleteModel(model.bundleFilename) }
     }
 
     private fun submitToken(token: String) {

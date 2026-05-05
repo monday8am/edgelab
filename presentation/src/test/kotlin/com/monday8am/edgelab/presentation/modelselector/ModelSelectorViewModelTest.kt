@@ -263,6 +263,8 @@ class ModelSelectorViewModelTest {
         val state = viewModel.uiState.value
         assertNull(state.currentDownload)
         assertTrue(state.queuedDownloads.isEmpty())
+        assertEquals(1, fakeDownloadManager.deleteModelCallCount)
+        assertEquals("Qwen3-0.6B.litertlm", fakeDownloadManager.lastDeletedBundleFilename)
 
         viewModel.dispose()
     }

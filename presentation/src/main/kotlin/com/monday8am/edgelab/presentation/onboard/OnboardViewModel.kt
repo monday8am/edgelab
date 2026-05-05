@@ -142,7 +142,7 @@ class OnboardViewModelImpl(
 
     private fun startDownload(modelId: String) {
         val model = COPILOT_MODELS.find { it.modelId == modelId } ?: return
-        scope.launch(ioDispatcher) {
+        scope.launch {
             modelDownloadManager.downloadModel(
                 model.modelId,
                 model.downloadUrl,
@@ -153,6 +153,8 @@ class OnboardViewModelImpl(
 
     private fun cancelDownload(modelId: String) {
         modelDownloadManager.cancelDownload(modelId)
+        val model = COPILOT_MODELS.find { it.modelId == modelId } ?: return
+        scope.launch { modelDownloadManager.deleteModel(model.bundleFilename) }
     }
 
     private fun submitToken(token: String) {
