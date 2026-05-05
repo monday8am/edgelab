@@ -28,16 +28,16 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         OkHttpClient.Builder().followRedirects(true).followSslRedirects(true).build()
 
     override suspend fun doWork(): Result {
-        return try {
-            val url =
-                inputData.getString(KEY_URL)
-                    ?: return Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
-            val destinationPath =
-                inputData.getString(KEY_DESTINATION_PATH)
-                    ?: return Result.failure(
-                        workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided")
-                    )
+        val url =
+            inputData.getString(KEY_URL)
+                ?: return Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
+        val destinationPath =
+            inputData.getString(KEY_DESTINATION_PATH)
+                ?: return Result.failure(
+                    workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided")
+                )
 
+        return try {
             setForeground(createForegroundInfo(0))
 
             val destinationFile = File(destinationPath)
@@ -47,6 +47,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             setProgress(workDataOf(KEY_PROGRESS to 100f))
             Result.success()
         } catch (e: CancellationException) {
+            File(destinationPath).delete()
             throw e
         } catch (e: Exception) {
             Logger.withTag("DownloadWorker").e(e) { "Download failed" }
@@ -181,11 +182,11 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                                 cancelIntent,
                                 PendingIntent.FLAG_IMMUTABLE,
                             )
-                        builder.addAction(
-                            android.R.drawable.ic_delete,
-                            "Cancel",
-                            cancelPendingIntent,
-                        )
+                            builder.addAction(
+                                android.R.drawable.ic_delete,
+                                applicationContext.getString(android.R.string.cancel),
+                                cancelPendingIntent,
+                            )
                     }
                 }
                 .build()
