@@ -2,7 +2,9 @@ package com.monday8am.edgelab.core.download
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -138,6 +140,54 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 .setProgress(100, progress, progress == 0)
                 .setOngoing(progress < 100)
                 .setOnlyAlertOnce(true)
+                .also { builder ->
+                    val launchIntent =
+                        applicationContext.packageManager
+                            .getLaunchIntentForPackage(applicationContext.packageName)
+                            ?.apply {
+                                flags =
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                    if (launchIntent != null) {
+                        val contentPendingIntent =
+                            PendingIntent.getActivity(
+                                applicationContext,
+                                0,
+                                launchIntent,
+                                PendingIntent.FLAG_IMMUTABLE or
+                                    PendingIntent.FLAG_UPDATE_CURRENT,
+                            )
+                        builder.setContentIntent(contentPendingIntent)
+                    }
+
+                    if (progress < 100) {
+                        val cancelIntent =
+                            Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
+                                action = CancelDownloadReceiver.ACTION
+                                putExtra(
+                                    CancelDownloadReceiver.EXTRA_MODEL_ID,
+                                    modelId,
+                                )
+                                putExtra(
+                                    CancelDownloadReceiver.EXTRA_NOTIFICATION_ID,
+                                    notificationId,
+                                )
+                            }
+                        val cancelPendingIntent =
+                            PendingIntent.getBroadcast(
+                                applicationContext,
+                                notificationId,
+                                cancelIntent,
+                                PendingIntent.FLAG_IMMUTABLE,
+                            )
+                        builder.addAction(
+                            android.R.drawable.ic_delete,
+                            "Cancel",
+                            cancelPendingIntent,
+                        )
+                    }
+                }
                 .build()
         return ForegroundInfo(
             notificationId,
