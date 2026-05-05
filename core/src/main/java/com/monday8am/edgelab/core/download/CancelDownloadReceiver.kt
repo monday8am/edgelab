@@ -12,7 +12,7 @@ class CancelDownloadReceiver : BroadcastReceiver() {
         val modelId = intent.getStringExtra(EXTRA_MODEL_ID) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
 
-        WorkManager.getInstance(context).cancelUniqueWork("model-download-$modelId")
+        WorkManager.getInstance(context).cancelUniqueWork(DownloadWorker.getUniqueWorkName(modelId))
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

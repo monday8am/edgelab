@@ -234,6 +234,8 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 .build()
         }
 
+        fun getUniqueWorkName(modelId: String): String = "model-download-$modelId"
+
         private fun deriveNotificationId(modelId: String): Int {
             return BASE_NOTIFICATION_ID + modelId.hashCode()
         }

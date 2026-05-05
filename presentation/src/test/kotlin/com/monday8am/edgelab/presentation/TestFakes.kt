@@ -92,7 +92,7 @@ internal class FakeModelDownloadManager(
         }
     }
 
-    override fun cancelDownload() {}
+    override fun cancelDownload(modelId: String) {}
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 

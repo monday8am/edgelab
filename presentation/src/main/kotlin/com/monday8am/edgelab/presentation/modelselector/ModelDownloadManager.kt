@@ -35,7 +35,7 @@ interface ModelDownloadManager {
     suspend fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String): Boolean
 
     /** Cancels all active downloads. */
-    fun cancelDownload()
+    fun cancelDownload(modelId: String)
 
     /**
      * Deletes a downloaded model from disk.

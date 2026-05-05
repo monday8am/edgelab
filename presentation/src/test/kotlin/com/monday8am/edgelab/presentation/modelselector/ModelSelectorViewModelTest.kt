@@ -257,7 +257,7 @@ class ModelSelectorViewModelTest {
 
         viewModel.onUiAction(UiAction.DownloadModel(model1.modelId))
         // Trigger cancel
-        viewModel.onUiAction(UiAction.CancelCurrentDownload)
+        viewModel.onUiAction(UiAction.CancelDownload(model1.modelId))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value

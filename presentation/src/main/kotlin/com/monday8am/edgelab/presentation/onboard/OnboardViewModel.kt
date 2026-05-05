@@ -45,7 +45,7 @@ sealed interface DownloadStatus {
 sealed class UiAction {
     data class DownloadModel(val modelId: String) : UiAction()
 
-    data object CancelCurrentDownload : UiAction()
+    data class CancelDownload(val modelId: String) : UiAction()
 
     data class SubmitToken(val token: String) : UiAction()
 
@@ -128,7 +128,7 @@ class OnboardViewModelImpl(
     override fun onUiAction(action: UiAction) {
         when (action) {
             is UiAction.DownloadModel -> startDownload(action.modelId)
-            is UiAction.CancelCurrentDownload -> cancelDownload()
+            is UiAction.CancelDownload -> cancelDownload(action.modelId)
             is UiAction.SubmitToken -> submitToken(action.token)
             is UiAction.StartOAuth -> {
                 /* OAuth flow handled by UI layer */
@@ -151,8 +151,8 @@ class OnboardViewModelImpl(
         }
     }
 
-    private fun cancelDownload() {
-        modelDownloadManager.cancelDownload()
+    private fun cancelDownload(modelId: String) {
+        modelDownloadManager.cancelDownload(modelId)
     }
 
     private fun submitToken(token: String) {

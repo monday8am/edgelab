@@ -101,7 +101,7 @@ class ModelDownloadManagerImpl(
     ): Boolean =
         withContext(dispatcher) {
             if (File(getModelPath(bundleFilename)).exists()) return@withContext true
-            if (findRunningWork("model-download-$modelId") != null) return@withContext true
+            if (findRunningWork(DownloadWorker.getUniqueWorkName(modelId)) != null) return@withContext true
 
             downloadMutex.withLock {
                 val activeCount =
@@ -111,7 +111,7 @@ class ModelDownloadManagerImpl(
                 val token = authRepository.authToken.value
                 val workRequest =
                     createDownloadWorkRequest(modelId, downloadUrl, File(getModelPath(bundleFilename)), token)
-                workManager.enqueueUniqueWork("model-download-$modelId", ExistingWorkPolicy.KEEP, workRequest)
+                workManager.enqueueUniqueWork(DownloadWorker.getUniqueWorkName(modelId), ExistingWorkPolicy.KEEP, workRequest)
             }
             true
         }
@@ -152,8 +152,8 @@ class ModelDownloadManagerImpl(
             }
         }
 
-    override fun cancelDownload() {
-        workManager.cancelAllWorkByTag(WORK_TAG)
+    override fun cancelDownload(modelId: String) {
+        workManager.cancelUniqueWork(DownloadWorker.getUniqueWorkName(modelId))
     }
 
     override fun dispose() {
