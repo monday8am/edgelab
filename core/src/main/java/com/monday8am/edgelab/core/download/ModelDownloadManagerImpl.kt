@@ -49,7 +49,7 @@ class ModelDownloadManagerImpl(
     init {
         scope.launch {
             workManager.getWorkInfosByTagFlow(WORK_TAG).collect { workInfos ->
-                if (workInfos.any { it.state == WorkInfo.State.SUCCEEDED }) {
+                if (workInfos.any { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.CANCELLED }) {
                     refreshDiskState()
                 }
             }
