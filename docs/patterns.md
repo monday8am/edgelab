@@ -183,12 +183,14 @@ Always `SupervisorJob()` (one child failure won't cancel siblings). Always `Main
 ### Background work
 
 ```kotlin
-scope.launch(ioDispatcher) {
+scope.launch {
     modelDownloadManager.downloadModel(...)
 }
 ```
 
-Use the injected `ioDispatcher`, never hardcode `Dispatchers.IO`.
+Do NOT pass `ioDispatcher` to `scope.launch` when calling model/downstream layer methods. Those layers already handle their own dispatching via `withContext(dispatcher)`. Passing `ioDispatcher` is redundant and blurs the layer boundary.
+
+`ioDispatcher` is used for `flowOn()` on combine flows, not for launching suspend calls.
 
 ### Dispatcher injection
 

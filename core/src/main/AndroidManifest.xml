@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Core module manifest - no components, just a library -->
+    <application>
+        <receiver
+            android:name=".download.CancelDownloadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.monday8am.edgelab.CANCEL_DOWNLOAD" />
+            </intent-filter>
+        </receiver>
+    </application>
 </manifest>

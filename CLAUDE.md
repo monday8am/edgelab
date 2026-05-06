@@ -33,6 +33,7 @@ Strict unidirectional. No module may depend on a module to its right.
 |-------|-----------|
 | Side effects inside `MutableStateFlow.update{}` | Extract before `update{}` — lambda may CAS-retry |
 | Redundant `flowOn` when `withContext` handles dispatch | Pick one |
+| Wrapping suspend calls in `scope.launch(ioDispatcher)` | `scope.launch` — downstream layer dispatches itself |
 | Import `androidx.lifecycle` in `:presentation` | Only in `:app:*` wrappers |
 | Hardcode `Dispatchers.IO` in ViewModel | Accept `ioDispatcher` param |
 | Missing `@Volatile` for cross-thread mutable vars | `@Volatile` or `AtomicReference` |

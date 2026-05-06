@@ -235,10 +235,14 @@ class OnboardViewModelTest {
             )
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.CancelCurrentDownload)
+        viewModel.onUiAction(UiAction.CancelDownload("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
         advanceUntilIdle()
 
-        // Cancel should be called on manager (no assertion for void method in fake)
+        assertEquals(1, fakeDownloadManager.deleteModelCallCount)
+        assertEquals(
+            "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+            fakeDownloadManager.lastDeletedBundleFilename,
+        )
         viewModel.dispose()
     }
 

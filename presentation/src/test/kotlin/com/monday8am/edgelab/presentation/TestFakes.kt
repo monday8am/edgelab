@@ -50,6 +50,12 @@ internal class FakeModelDownloadManager(
         MutableStateFlow(emptyMap()),
 ) : ModelDownloadManager {
 
+    var deleteModelCallCount = 0
+        private set
+
+    var lastDeletedBundleFilename: String? = null
+        private set
+
     override suspend fun downloadModel(
         modelId: String,
         downloadUrl: String,
@@ -92,11 +98,13 @@ internal class FakeModelDownloadManager(
         }
     }
 
-    override fun cancelDownload() {}
+    override fun cancelDownload(modelId: String) {}
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 
     override suspend fun deleteModel(bundleFilename: String): Boolean {
+        deleteModelCallCount++
+        lastDeletedBundleFilename = bundleFilename
         modelsStatusFlow.update { it - bundleFilename }
         return true
     }

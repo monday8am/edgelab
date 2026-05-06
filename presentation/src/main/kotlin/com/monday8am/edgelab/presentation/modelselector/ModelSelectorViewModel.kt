@@ -75,7 +75,7 @@ sealed interface DownloadStatus {
 sealed class UiAction {
     data class DownloadModel(val modelId: String) : UiAction()
 
-    data object CancelCurrentDownload : UiAction()
+    data class CancelDownload(val modelId: String) : UiAction()
 
     data class DeleteModel(val modelId: String) : UiAction()
 
@@ -144,7 +144,7 @@ class ModelSelectorViewModelImpl(
         when (action) {
             is UiAction.Initialize -> loadCatalog()
             is UiAction.DownloadModel -> startDownload(action.modelId)
-            is UiAction.CancelCurrentDownload -> cancelDownload()
+            is UiAction.CancelDownload -> cancelDownload(action.modelId)
             is UiAction.DeleteModel -> deleteModel(action.modelId)
             is UiAction.SubmitToken -> submitToken(action.token)
             is UiAction.Logout -> logout()
@@ -166,7 +166,7 @@ class ModelSelectorViewModelImpl(
 
     private fun startDownload(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
-        scope.launch(ioDispatcher) {
+        scope.launch {
             val accepted =
                 modelDownloadManager.downloadModel(
                     model.modelId,
@@ -179,13 +179,14 @@ class ModelSelectorViewModelImpl(
         }
     }
 
-    private fun cancelDownload() {
-        modelDownloadManager.cancelDownload()
+    private fun cancelDownload(modelId: String) {
+        modelDownloadManager.cancelDownload(modelId)
+        deleteModel(modelId)
     }
 
     private fun deleteModel(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
-        scope.launch(ioDispatcher) { modelDownloadManager.deleteModel(model.bundleFilename) }
+        scope.launch { modelDownloadManager.deleteModel(model.bundleFilename) }
     }
 
     private fun submitToken(token: String) {

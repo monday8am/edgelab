@@ -430,7 +430,7 @@ private fun ModelDownloadCard(
                         )
                     }
                     is DownloadStatus.Downloading -> {
-                        TextButton(onClick = { onAction(UiAction.CancelCurrentDownload) }) {
+                        TextButton(onClick = { onAction(UiAction.CancelDownload(modelInfo.config.modelId)) }) {
                             Text("Cancel")
                         }
                     }

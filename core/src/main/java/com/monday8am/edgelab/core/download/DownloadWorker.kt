@@ -1,8 +1,11 @@
 package com.monday8am.edgelab.core.download
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -15,6 +18,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -22,21 +26,59 @@ import okhttp3.Request
 class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private val client =
-        OkHttpClient.Builder().followRedirects(true).followSslRedirects(true).build()
+    private val modelId by lazy { inputData.getString(KEY_MODEL_ID) ?: "" }
+
+    private val notificationId by lazy { deriveNotificationId(modelId) }
+
+    private val notificationManager by lazy {
+        applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
+
+    private val contentPendingIntent by lazy {
+        applicationContext.packageManager
+            .getLaunchIntentForPackage(applicationContext.packageName)
+            ?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            ?.let {
+                PendingIntent.getActivity(
+                    applicationContext,
+                    0,
+                    it,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+            }
+    }
+
+    private val cancelPendingIntent by lazy {
+        val intent = Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
+            action = CancelDownloadReceiver.ACTION
+            putExtra(CancelDownloadReceiver.EXTRA_MODEL_ID, modelId)
+            putExtra(CancelDownloadReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+        }
+        PendingIntent.getBroadcast(
+            applicationContext,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private val logger = Logger.withTag("DownloadWorker")
 
     override suspend fun doWork(): Result {
-        return try {
-            val url =
-                inputData.getString(KEY_URL)
-                    ?: return Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
-            val destinationPath =
-                inputData.getString(KEY_DESTINATION_PATH)
-                    ?: return Result.failure(
-                        workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided")
-                    )
+        val url =
+            inputData.getString(KEY_URL)
+                ?: return Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
+        val destinationPath =
+            inputData.getString(KEY_DESTINATION_PATH)
+                ?: return Result.failure(
+                    workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided")
+                )
 
-            setForeground(createForegroundInfo(0))
+        return try {
+            ensureNotificationChannel()
+            setForeground(createForegroundInfo())
 
             val destinationFile = File(destinationPath)
             destinationFile.parentFile?.mkdirs()
@@ -45,9 +87,10 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             setProgress(workDataOf(KEY_PROGRESS to 100f))
             Result.success()
         } catch (e: CancellationException) {
+            File(destinationPath).delete()
             throw e
         } catch (e: Exception) {
-            Logger.withTag("DownloadWorker").e(e) { "Download failed" }
+            logger.e(e) { "Download failed" }
             Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Unknown error")))
         }
     }
@@ -63,7 +106,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             requestBuilder.addHeader("Authorization", "Bearer $token")
         }
 
-        client.newCall(requestBuilder.build()).execute().use { response ->
+        httpClient.newCall(requestBuilder.build()).execute().use { response ->
             if (response.code == 416) return
             if (!response.isSuccessful) {
                 val errorCode = response.header("X-Error-Code")
@@ -89,7 +132,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 FileOutputStream(destFile, isResuming).use { output ->
                     copyStreamWithProgress(input, output, totalBytes, existingBytes) { progress ->
                         setProgress(workDataOf(KEY_PROGRESS to progress))
-                        setForeground(createForegroundInfo(progress.toInt()))
+                        notificationManager.notify(notificationId, createNotification(progress.toInt()))
                     }
                 }
             }
@@ -126,37 +169,45 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
     }
 
-    private fun createForegroundInfo(progress: Int): ForegroundInfo {
-        ensureNotificationChannel()
-        val modelId = inputData.getString(KEY_MODEL_ID) ?: ""
-        val notificationId = deriveNotificationId(modelId)
-        val notification =
-            NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
-                .setContentTitle("Downloading model")
-                .setContentText(if (progress < 100) "$progress%" else "Download complete")
-                .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setProgress(100, progress, progress == 0)
-                .setOngoing(progress < 100)
-                .setOnlyAlertOnce(true)
-                .build()
+    private fun createForegroundInfo(): ForegroundInfo {
         return ForegroundInfo(
             notificationId,
-            notification,
+            createNotification(0),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
         )
     }
 
+    private fun createNotification(progress: Int): Notification {
+        val isDownloading = progress < 100
+        return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Downloading model")
+            .setContentText(if (isDownloading) "$progress%" else "Download complete")
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setProgress(100, progress, progress == 0)
+            .setOngoing(isDownloading)
+            .setOnlyAlertOnce(true)
+            .apply {
+                contentPendingIntent?.let { setContentIntent(it) }
+                if (isDownloading) {
+                    addAction(
+                        android.R.drawable.ic_delete,
+                        applicationContext.getString(android.R.string.cancel),
+                        cancelPendingIntent,
+                    )
+                }
+            }
+            .build()
+    }
+
     private fun ensureNotificationChannel() {
-        val manager =
-            applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
+        if (notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
             NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
                     "Model Downloads",
                     NotificationManager.IMPORTANCE_LOW,
                 )
                 .apply { description = "Shows progress while downloading AI models" }
-                .also { manager.createNotificationChannel(it) }
+                .also { notificationManager.createNotificationChannel(it) }
         }
     }
 
@@ -171,6 +222,19 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         private const val NOTIFICATION_CHANNEL_ID = "model_download_channel"
         private const val BASE_NOTIFICATION_ID = 1001
         private const val BUFFER_SIZE = 64 * 1024
+        private const val CONNECT_TIMEOUT_SECONDS = 30L
+        private const val READ_TIMEOUT_SECONDS = 60L
+
+        private val httpClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .build()
+        }
+
+        fun getUniqueWorkName(modelId: String): String = "model-download-$modelId"
 
         private fun deriveNotificationId(modelId: String): Int {
             return BASE_NOTIFICATION_ID + modelId.hashCode()
