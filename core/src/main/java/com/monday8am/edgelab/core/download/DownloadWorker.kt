@@ -20,6 +20,8 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -95,7 +97,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
     }
 
-    private suspend fun downloadFile(url: String, destFile: File) {
+    private suspend fun downloadFile(url: String, destFile: File) = withContext(Dispatchers.IO) {
         val existingBytes = if (destFile.exists()) destFile.length() else 0L
 
         val requestBuilder = Request.Builder().url(url)
@@ -107,7 +109,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
 
         httpClient.newCall(requestBuilder.build()).execute().use { response ->
-            if (response.code == 416) return
+            if (response.code == 416) return@withContext
             if (!response.isSuccessful) {
                 val errorCode = response.header("X-Error-Code")
                 val errorMessage = response.header("X-Error-Message")
@@ -153,6 +155,9 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         var lastUpdateTime = 0L
 
         while (input.read(buffer).also { bytesRead = it } != -1) {
+            if (isStopped) {
+                throw CancellationException("Download cancelled")
+            }
             output.write(buffer, 0, bytesRead)
             bytesCopied += bytesRead
 
