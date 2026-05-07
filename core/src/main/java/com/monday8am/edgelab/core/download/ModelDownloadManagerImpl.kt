@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,8 +50,20 @@ class ModelDownloadManagerImpl(
     init {
         scope.launch {
             workManager.getWorkInfosByTagFlow(WORK_TAG).collect { workInfos ->
-                if (workInfos.any { it.state == WorkInfo.State.SUCCEEDED || it.state == WorkInfo.State.CANCELLED }) {
-                    refreshDiskState()
+                workInfos.forEach { workInfo ->
+                    when (workInfo.state) {
+                        WorkInfo.State.SUCCEEDED -> {
+                            val bundleFilename = workInfo.extractBundleFilename() ?: return@forEach
+                            if (!downloadedFilenames.value.contains(bundleFilename)) {
+                                refreshDiskState()
+                            }
+                        }
+                        WorkInfo.State.CANCELLED -> {
+                            val bundleFilename = workInfo.extractBundleFilename() ?: return@forEach
+                            deleteModel(bundleFilename)
+                        }
+                        else -> { /* no-op */ }
+                    }
                 }
             }
         }
@@ -81,7 +94,7 @@ class ModelDownloadManagerImpl(
         File(modelDestinationPath).listFiles()?.map { it.name }?.toSet() ?: emptySet()
 
     private fun refreshDiskState() {
-        downloadedFilenames.value = scanDiskFiles()
+        downloadedFilenames.update { scanDiskFiles() }
     }
 
     override fun getModelPath(bundleFilename: String) = "$modelDestinationPath$bundleFilename"

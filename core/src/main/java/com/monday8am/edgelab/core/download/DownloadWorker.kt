@@ -89,7 +89,6 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             setProgress(workDataOf(KEY_PROGRESS to 100f))
             Result.success()
         } catch (e: CancellationException) {
-            File(destinationPath).delete()
             throw e
         } catch (e: Exception) {
             logger.e(e) { "Download failed" }
@@ -147,7 +146,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         totalBytes: Long,
         alreadyCopied: Long,
         onProgress: suspend (Float) -> Unit,
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val buffer = ByteArray(BUFFER_SIZE)
         var bytesRead: Int
         var bytesCopied: Long = alreadyCopied
