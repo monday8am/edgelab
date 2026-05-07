@@ -88,8 +88,8 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val modelIds = state.models.map { it.config.modelId }
-        assertTrue(modelIds.contains("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
-        assertTrue(modelIds.contains("cycling-copilot_q8_ekv1024"))
+        assertTrue(modelIds.contains("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"))
+        assertTrue(modelIds.contains("cycling-copilot_q8_ekv1024.litertlm"))
 
         viewModel.dispose()
     }
@@ -134,12 +134,16 @@ class OnboardViewModelTest {
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.DownloadModel("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
+        viewModel.onUiAction(
+            UiAction.DownloadModel("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm")
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         val model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
         assertEquals(DownloadStatus.Completed, model.downloadStatus)
@@ -158,11 +162,11 @@ class OnboardViewModelTest {
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.DownloadModel("cycling-copilot_q8_ekv1024"))
+        viewModel.onUiAction(UiAction.DownloadModel("cycling-copilot_q8_ekv1024.litertlm"))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024" }
+        val model = state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024.litertlm" }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
 
@@ -185,7 +189,9 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Downloading)
         assertEquals(42f, (model.downloadStatus as DownloadStatus.Downloading).progress)
@@ -211,8 +217,11 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val userModel =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
-        val gemmaModel = state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
+        val gemmaModel =
+            state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024.litertlm" }
 
         assertNotNull(userModel)
         assertNotNull(gemmaModel)
@@ -235,7 +244,9 @@ class OnboardViewModelTest {
             )
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.CancelDownload("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
+        viewModel.onUiAction(
+            UiAction.CancelDownload("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm")
+        )
         advanceUntilIdle()
 
         assertEquals(1, fakeDownloadManager.deleteModelCallCount)
@@ -303,7 +314,9 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Failed)
         assertEquals("Network error", (model.downloadStatus as DownloadStatus.Failed).error)
@@ -384,7 +397,9 @@ class OnboardViewModelTest {
         // Initially not started
         var state = viewModel.uiState.value
         var model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.NotStarted)
 
@@ -398,7 +413,9 @@ class OnboardViewModelTest {
 
         state = viewModel.uiState.value
         model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Downloading)
 
@@ -410,7 +427,9 @@ class OnboardViewModelTest {
 
         state = viewModel.uiState.value
         model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
         assertEquals(DownloadStatus.Completed, model.downloadStatus)
@@ -433,7 +452,9 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val model =
-            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+            state.models.find {
+                it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
+            }
         assertNotNull(model)
         assertEquals(DownloadStatus.NotStarted, model.downloadStatus)
         assertFalse(model.isDownloaded)
