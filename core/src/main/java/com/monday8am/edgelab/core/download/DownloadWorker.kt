@@ -187,6 +187,13 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             .setOngoing(isDownloading)
             .setOnlyAlertOnce(true)
             .apply {
+                if (isDownloading) {
+                    setSilent(true)
+                    setPriority(NotificationCompat.PRIORITY_LOW)
+                    setForegroundServiceBehavior(
+                        NotificationCompat.FOREGROUND_SERVICE_DEFERRED,
+                    )
+                }
                 contentPendingIntent?.let { setContentIntent(it) }
                 if (isDownloading) {
                     addAction(
