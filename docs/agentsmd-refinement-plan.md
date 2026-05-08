@@ -37,7 +37,7 @@ Format → test → build both apps, in order, before every commit
 Passive "Purpose" column → active "Before doing this" triggers
 
 ### Slash commands added
-`/commit-pr-greptile` documented in workflow section
+`/commit-pr`, `/skill:check-pr`, `/skill:greploop` documented in workflow section
 
 ### Keeping Docs Current expanded
 - New convention → add to `docs/patterns.md`

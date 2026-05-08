@@ -29,4 +29,5 @@ When you add/rename/remove:
 |---------|-------------|
 | `/review` | Review uncommitted changes, a commit, branch diff, or PR with EdgeLab-specific conventions |
 | `/commit-pr` | Commit, push, and create a GitHub PR (no Greptile loop) |
-| `/commit-pr-greptile` | Commit, create PR, poll Greptile review, auto-fix |
+| `/skill:check-pr` | Check a PR for Greptile review comments and status |
+| `/skill:greploop` | Iteratively fix a PR against Greptile review until 5/5 confidence |
