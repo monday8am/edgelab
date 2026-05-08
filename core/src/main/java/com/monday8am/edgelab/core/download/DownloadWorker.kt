@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -96,34 +97,89 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
     }
 
-    private suspend fun downloadFile(url: String, destFile: File) = withContext(Dispatchers.IO) {
-        val existingBytes = if (destFile.exists()) destFile.length() else 0L
+    private fun ensureNotificationChannel() {
+        if (notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
+            NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW,
+            )
+                .apply { description = NOTIFICATION_CHANNEL_DESCRIPTION }
+                .also { notificationManager.createNotificationChannel(it) }
+        }
+    }
 
-        val requestBuilder = Request.Builder().url(url)
+    private fun createForegroundInfo(): ForegroundInfo {
+        return ForegroundInfo(
+            notificationId,
+            createNotification(0),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
+    }
+
+    private fun createNotification(progress: Int): Notification {
+        val isDownloading = progress < 100
+        return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setContentText(if (isDownloading) "$progress%" else NOTIFICATION_COMPLETE_TEXT)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setProgress(100, progress, progress == 0)
+            .setOngoing(isDownloading)
+            .setOnlyAlertOnce(true)
+            .apply {
+                contentPendingIntent?.let { setContentIntent(it) }
+                if (isDownloading) {
+                    addAction(
+                        android.R.drawable.ic_delete,
+                        applicationContext.getString(android.R.string.cancel),
+                        cancelPendingIntent,
+                    )
+                }
+            }
+            .build()
+    }
+
+    private fun buildRequest(url: String, existingBytes: Long): Request {
+        val builder = Request.Builder().url(url)
         if (existingBytes > 0) {
-            requestBuilder.addHeader("Range", "bytes=$existingBytes-")
+            builder.addHeader(HEADER_RANGE, "$HTTP_RANGE_PREFIX$existingBytes-")
         }
         inputData.getString(KEY_AUTH_TOKEN)?.let { token ->
-            requestBuilder.addHeader("Authorization", "Bearer $token")
+            builder.addHeader(HEADER_AUTHORIZATION, "$HTTP_BEARER_PREFIX$token")
+        }
+        return builder.build()
+    }
+
+    private fun parseHttpError(code: Int, errorCode: String?, errorMessage: String?): String =
+        when {
+            errorCode == ERROR_CODE_GATED_REPO ->
+                "Access restricted. Please visit the model page to accept the license agreement."
+            !errorMessage.isNullOrBlank() -> errorMessage
+            else -> "HTTP error $code"
         }
 
-        httpClient.newCall(requestBuilder.build()).execute().use { response ->
-            if (response.code == 416) return@withContext
+    private suspend fun downloadFile(url: String, destFile: File) = withContext(Dispatchers.IO) {
+        val existingBytes = if (destFile.exists()) destFile.length() else 0L
+        var lastNotificationTime = 0L
+
+        val request = buildRequest(url, existingBytes)
+        httpClient.newCall(request).execute().use { response ->
+            if (response.code == HTTP_STATUS_RANGE_NOT_SATISFIABLE) {
+                notificationManager.cancel(notificationId)
+                return@withContext
+            }
             if (!response.isSuccessful) {
-                val errorCode = response.header("X-Error-Code")
-                val errorMessage = response.header("X-Error-Message")
                 val detail =
-                    when {
-                        errorCode == "GatedRepo" ->
-                            "Access restricted. Please visit the model page to accept the license agreement."
-                        !errorMessage.isNullOrBlank() -> errorMessage
-                        else -> "HTTP error ${response.code}"
-                    }
+                    parseHttpError(
+                        response.code,
+                        response.header(HEADER_X_ERROR_CODE),
+                        response.header(HEADER_X_ERROR_MESSAGE),
+                    )
                 throw IOException(detail)
             }
 
             val body = response.body
-            val isResuming = response.code == 206
+            val isResuming = response.code == HTTP_STATUS_PARTIAL_CONTENT
             val contentLen = body.contentLength()
             val totalBytes =
                 if (isResuming) contentLen + existingBytes
@@ -133,7 +189,17 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 FileOutputStream(destFile, isResuming).use { output ->
                     copyStreamWithProgress(input, output, totalBytes, existingBytes) { progress ->
                         setProgress(workDataOf(KEY_PROGRESS to progress))
-                        notificationManager.notify(notificationId, createNotification(progress.toInt()))
+                        val now = System.currentTimeMillis()
+                        if (
+                            now - lastNotificationTime >= NOTIFICATION_UPDATE_INTERVAL_MS ||
+                                progress >= 100f
+                        ) {
+                            notificationManager.notify(
+                                notificationId,
+                                createNotification(progress.roundToInt()),
+                            )
+                            lastNotificationTime = now
+                        }
                     }
                 }
             }
@@ -171,54 +237,9 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 }
             }
         }
-    }
 
-    private fun createForegroundInfo(): ForegroundInfo {
-        return ForegroundInfo(
-            notificationId,
-            createNotification(0),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
-    }
-
-    private fun createNotification(progress: Int): Notification {
-        val isDownloading = progress < 100
-        return NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Downloading model")
-            .setContentText(if (isDownloading) "$progress%" else "Download complete")
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(100, progress, progress == 0)
-            .setOngoing(isDownloading)
-            .setOnlyAlertOnce(true)
-            .apply {
-                if (isDownloading) {
-                    setSilent(true)
-                    setPriority(NotificationCompat.PRIORITY_LOW)
-                    setForegroundServiceBehavior(
-                        NotificationCompat.FOREGROUND_SERVICE_DEFERRED,
-                    )
-                }
-                contentPendingIntent?.let { setContentIntent(it) }
-                if (isDownloading) {
-                    addAction(
-                        android.R.drawable.ic_delete,
-                        applicationContext.getString(android.R.string.cancel),
-                        cancelPendingIntent,
-                    )
-                }
-            }
-            .build()
-    }
-
-    private fun ensureNotificationChannel() {
-        if (notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
-            NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    "Model Downloads",
-                    NotificationManager.IMPORTANCE_LOW,
-                )
-                .apply { description = "Shows progress while downloading AI models" }
-                .also { notificationManager.createNotificationChannel(it) }
+        if (totalBytes > 0) {
+            onProgress(100f)
         }
     }
 
@@ -235,6 +256,23 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         private const val BUFFER_SIZE = 64 * 1024
         private const val CONNECT_TIMEOUT_SECONDS = 30L
         private const val READ_TIMEOUT_SECONDS = 60L
+        private const val NOTIFICATION_UPDATE_INTERVAL_MS = 1000L
+
+        private const val NOTIFICATION_TITLE = "Downloading model"
+        private const val NOTIFICATION_COMPLETE_TEXT = "Download complete"
+        private const val NOTIFICATION_CHANNEL_NAME = "Model Downloads"
+        private const val NOTIFICATION_CHANNEL_DESCRIPTION =
+            "Shows progress while downloading AI models"
+
+        private const val HEADER_RANGE = "Range"
+        private const val HEADER_AUTHORIZATION = "Authorization"
+        private const val HEADER_X_ERROR_CODE = "X-Error-Code"
+        private const val HEADER_X_ERROR_MESSAGE = "X-Error-Message"
+        private const val ERROR_CODE_GATED_REPO = "GatedRepo"
+        private const val HTTP_RANGE_PREFIX = "bytes="
+        private const val HTTP_BEARER_PREFIX = "Bearer "
+        private const val HTTP_STATUS_RANGE_NOT_SATISFIABLE = 416
+        private const val HTTP_STATUS_PARTIAL_CONTENT = 206
 
         private val httpClient: OkHttpClient by lazy {
             OkHttpClient.Builder()
