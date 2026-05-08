@@ -7,9 +7,8 @@ description: Agent workflow automation, documentation maintenance checklists, an
 
 ## Agent Workflows
 
-Agent workflows live in `.agents/workflows/` with `// turbo-all` auto-approval.
-
-Run `ls .agents/workflows/` to see available workflows.
+Agent workflows are now embedded as skills in `.agents/skills/`.
+Run `ls .agents/skills/` to see available skills.
 
 ## Keeping Docs Current
 
