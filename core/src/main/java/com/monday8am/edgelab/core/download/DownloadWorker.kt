@@ -28,9 +28,9 @@ import okhttp3.Request
 class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private val modelId by lazy { inputData.getString(KEY_MODEL_ID) ?: "" }
+    private val bundleFilename by lazy { inputData.getString(KEY_BUNDLE_FILENAME) ?: "" }
 
-    private val notificationId by lazy { deriveNotificationId(modelId) }
+    private val notificationId by lazy { deriveNotificationId(bundleFilename) }
 
     private val notificationManager by lazy {
         applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -55,7 +55,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     private val cancelPendingIntent by lazy {
         val intent = Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
             action = CancelDownloadReceiver.ACTION
-            putExtra(CancelDownloadReceiver.EXTRA_MODEL_ID, modelId)
+            putExtra(CancelDownloadReceiver.EXTRA_BUNDLE_FILENAME, bundleFilename)
             putExtra(CancelDownloadReceiver.EXTRA_NOTIFICATION_ID, notificationId)
         }
         PendingIntent.getBroadcast(
@@ -228,7 +228,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_ERROR_MESSAGE = "KEY_ERROR_MESSAGE"
         const val KEY_AUTH_TOKEN = "KEY_AUTH_TOKEN"
-        const val KEY_MODEL_ID = "KEY_MODEL_ID"
+        const val KEY_BUNDLE_FILENAME = "KEY_BUNDLE_FILENAME"
 
         private const val NOTIFICATION_CHANNEL_ID = "model_download_channel"
         private const val BASE_NOTIFICATION_ID = 1001
@@ -245,10 +245,10 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 .build()
         }
 
-        fun getUniqueWorkName(modelId: String): String = "model-download-$modelId"
+        fun getUniqueWorkName(bundleFilename: String): String = "model-download-$bundleFilename"
 
-        private fun deriveNotificationId(modelId: String): Int {
-            return BASE_NOTIFICATION_ID + modelId.hashCode()
+        private fun deriveNotificationId(bundleFilename: String): Int {
+            return BASE_NOTIFICATION_ID + bundleFilename.hashCode()
         }
     }
 }

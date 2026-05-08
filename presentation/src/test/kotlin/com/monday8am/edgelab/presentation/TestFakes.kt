@@ -56,11 +56,7 @@ internal class FakeModelDownloadManager(
     var lastDeletedBundleFilename: String? = null
         private set
 
-    override suspend fun downloadModel(
-        modelId: String,
-        downloadUrl: String,
-        bundleFilename: String,
-    ): Boolean {
+    override suspend fun downloadModel(downloadUrl: String, bundleFilename: String): Boolean {
         if (shouldReject) return false
         if (shouldFail) {
             modelsStatusFlow.update {
@@ -98,7 +94,7 @@ internal class FakeModelDownloadManager(
         }
     }
 
-    override fun cancelDownload(modelId: String) {}
+    override fun cancelDownload(bundleFilename: String) {}
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 

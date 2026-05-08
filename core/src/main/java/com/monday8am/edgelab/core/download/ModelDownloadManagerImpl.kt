@@ -108,13 +108,12 @@ class ModelDownloadManagerImpl(
         }
 
     override suspend fun downloadModel(
-        modelId: String,
         downloadUrl: String,
         bundleFilename: String,
     ): Boolean =
         withContext(dispatcher) {
             if (File(getModelPath(bundleFilename)).exists()) return@withContext true
-            if (findRunningWork(DownloadWorker.getUniqueWorkName(modelId)) != null) return@withContext true
+            if (findRunningWork(DownloadWorker.getUniqueWorkName(bundleFilename)) != null) return@withContext true
 
             downloadMutex.withLock {
                 val activeCount =
@@ -123,14 +122,17 @@ class ModelDownloadManagerImpl(
 
                 val token = authRepository.authToken.value
                 val workRequest =
-                    createDownloadWorkRequest(modelId, downloadUrl, File(getModelPath(bundleFilename)), token)
-                workManager.enqueueUniqueWork(DownloadWorker.getUniqueWorkName(modelId), ExistingWorkPolicy.KEEP, workRequest)
+                    createDownloadWorkRequest(downloadUrl, File(getModelPath(bundleFilename)), token)
+                workManager.enqueueUniqueWork(
+                    DownloadWorker.getUniqueWorkName(bundleFilename),
+                    ExistingWorkPolicy.KEEP,
+                    workRequest,
+                )
             }
             true
         }
 
     private fun createDownloadWorkRequest(
-        modelId: String,
         downloadUrl: String,
         destinationFile: File,
         token: String?,
@@ -149,11 +151,10 @@ class ModelDownloadManagerImpl(
                     DownloadWorker.KEY_URL to downloadUrl,
                     DownloadWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadWorker.KEY_AUTH_TOKEN to token,
-                    DownloadWorker.KEY_MODEL_ID to modelId,
+                    DownloadWorker.KEY_BUNDLE_FILENAME to destinationFile.name,
                 )
             )
             .addTag(WORK_TAG)
-            .addTag("$MODEL_ID_PREFIX$modelId")
             .addTag("$BUNDLE_FILENAME_PREFIX${destinationFile.name}")
             .build()
     }
@@ -165,8 +166,8 @@ class ModelDownloadManagerImpl(
             }
         }
 
-    override fun cancelDownload(modelId: String) {
-        workManager.cancelUniqueWork(DownloadWorker.getUniqueWorkName(modelId))
+    override fun cancelDownload(bundleFilename: String) {
+        workManager.cancelUniqueWork(DownloadWorker.getUniqueWorkName(bundleFilename))
     }
 
     override fun dispose() {
@@ -175,7 +176,6 @@ class ModelDownloadManagerImpl(
 
     companion object {
         private const val WORK_TAG = "model-download"
-        private const val MODEL_ID_PREFIX = "model-id:"
         private const val BUNDLE_FILENAME_PREFIX = "bundle-filename:"
         private const val MAX_CONCURRENT_DOWNLOADS = 3
     }
