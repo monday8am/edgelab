@@ -20,15 +20,17 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
 class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
 
-    private val modelId by lazy { inputData.getString(KEY_MODEL_ID) ?: "" }
+    private val bundleFilename by lazy { inputData.getString(KEY_BUNDLE_FILENAME) ?: "" }
 
-    private val notificationId by lazy { deriveNotificationId(modelId) }
+    private val notificationId by lazy { deriveNotificationId(bundleFilename) }
 
     private val notificationManager by lazy {
         applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -53,7 +55,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     private val cancelPendingIntent by lazy {
         val intent = Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
             action = CancelDownloadReceiver.ACTION
-            putExtra(CancelDownloadReceiver.EXTRA_MODEL_ID, modelId)
+            putExtra(CancelDownloadReceiver.EXTRA_BUNDLE_FILENAME, bundleFilename)
             putExtra(CancelDownloadReceiver.EXTRA_NOTIFICATION_ID, notificationId)
         }
         PendingIntent.getBroadcast(
@@ -87,7 +89,6 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             setProgress(workDataOf(KEY_PROGRESS to 100f))
             Result.success()
         } catch (e: CancellationException) {
-            File(destinationPath).delete()
             throw e
         } catch (e: Exception) {
             logger.e(e) { "Download failed" }
@@ -95,7 +96,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
     }
 
-    private suspend fun downloadFile(url: String, destFile: File) {
+    private suspend fun downloadFile(url: String, destFile: File) = withContext(Dispatchers.IO) {
         val existingBytes = if (destFile.exists()) destFile.length() else 0L
 
         val requestBuilder = Request.Builder().url(url)
@@ -107,7 +108,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         }
 
         httpClient.newCall(requestBuilder.build()).execute().use { response ->
-            if (response.code == 416) return
+            if (response.code == 416) return@withContext
             if (!response.isSuccessful) {
                 val errorCode = response.header("X-Error-Code")
                 val errorMessage = response.header("X-Error-Message")
@@ -145,7 +146,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         totalBytes: Long,
         alreadyCopied: Long,
         onProgress: suspend (Float) -> Unit,
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val buffer = ByteArray(BUFFER_SIZE)
         var bytesRead: Int
         var bytesCopied: Long = alreadyCopied
@@ -153,6 +154,9 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         var lastUpdateTime = 0L
 
         while (input.read(buffer).also { bytesRead = it } != -1) {
+            if (isStopped) {
+                throw CancellationException("Download cancelled")
+            }
             output.write(buffer, 0, bytesRead)
             bytesCopied += bytesRead
 
@@ -187,6 +191,13 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             .setOngoing(isDownloading)
             .setOnlyAlertOnce(true)
             .apply {
+                if (isDownloading) {
+                    setSilent(true)
+                    setPriority(NotificationCompat.PRIORITY_LOW)
+                    setForegroundServiceBehavior(
+                        NotificationCompat.FOREGROUND_SERVICE_DEFERRED,
+                    )
+                }
                 contentPendingIntent?.let { setContentIntent(it) }
                 if (isDownloading) {
                     addAction(
@@ -217,7 +228,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_ERROR_MESSAGE = "KEY_ERROR_MESSAGE"
         const val KEY_AUTH_TOKEN = "KEY_AUTH_TOKEN"
-        const val KEY_MODEL_ID = "KEY_MODEL_ID"
+        const val KEY_BUNDLE_FILENAME = "KEY_BUNDLE_FILENAME"
 
         private const val NOTIFICATION_CHANNEL_ID = "model_download_channel"
         private const val BASE_NOTIFICATION_ID = 1001
@@ -234,10 +245,10 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
                 .build()
         }
 
-        fun getUniqueWorkName(modelId: String): String = "model-download-$modelId"
+        fun getUniqueWorkName(bundleFilename: String): String = "model-download-$bundleFilename"
 
-        private fun deriveNotificationId(modelId: String): Int {
-            return BASE_NOTIFICATION_ID + modelId.hashCode()
+        private fun deriveNotificationId(bundleFilename: String): Int {
+            return BASE_NOTIFICATION_ID + bundleFilename.hashCode()
         }
     }
 }

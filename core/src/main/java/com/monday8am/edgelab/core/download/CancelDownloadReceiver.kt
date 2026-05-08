@@ -9,10 +9,12 @@ import androidx.work.WorkManager
 class CancelDownloadReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val modelId = intent.getStringExtra(EXTRA_MODEL_ID) ?: return
+        val bundleFilename = intent.getStringExtra(EXTRA_BUNDLE_FILENAME) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
 
-        WorkManager.getInstance(context).cancelUniqueWork(DownloadWorker.getUniqueWorkName(modelId))
+        WorkManager.getInstance(context).cancelUniqueWork(
+            DownloadWorker.getUniqueWorkName(bundleFilename)
+        )
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -21,7 +23,7 @@ class CancelDownloadReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION = "com.monday8am.edgelab.CANCEL_DOWNLOAD"
-        const val EXTRA_MODEL_ID = "model_id"
+        const val EXTRA_BUNDLE_FILENAME = "bundle_filename"
         const val EXTRA_NOTIFICATION_ID = "notification_id"
     }
 }

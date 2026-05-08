@@ -168,11 +168,7 @@ class ModelSelectorViewModelImpl(
         val model = modelRepository.findById(modelId) ?: return
         scope.launch {
             val accepted =
-                modelDownloadManager.downloadModel(
-                    model.modelId,
-                    model.downloadUrl,
-                    model.bundleFilename,
-                )
+                modelDownloadManager.downloadModel(model.downloadUrl, model.bundleFilename)
             if (!accepted) {
                 viewModelState.value = viewModelState.value.copy(showDownloadLimitDialog = true)
             }
@@ -180,8 +176,9 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun cancelDownload(modelId: String) {
-        modelDownloadManager.cancelDownload(modelId)
-        deleteModel(modelId)
+        val model = modelRepository.findById(modelId) ?: return
+        modelDownloadManager.cancelDownload(model.bundleFilename)
+        scope.launch { modelDownloadManager.deleteModel(model.bundleFilename) }
     }
 
     private fun deleteModel(modelId: String) {
