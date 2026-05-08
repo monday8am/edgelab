@@ -35,9 +35,6 @@ google-services.json
 # Android Profiling
 *.hprof
 
-# Claude Code settings (may contain sensitive data)
-.claude/settings.local.json
-
 # VSCode settings (optional - uncomment if you want these files ignored)
 .vscode
 .vscode/settings.json

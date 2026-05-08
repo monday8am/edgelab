@@ -7,9 +7,9 @@ description: Agent workflow automation, documentation maintenance checklists, an
 
 ## Agent Workflows
 
-Agent workflows live in `.agent/workflows/` with `// turbo-all` auto-approval.
+Agent workflows live in `.agents/workflows/` with `// turbo-all` auto-approval.
 
-Run `ls .agent/workflows/` to see available workflows.
+Run `ls .agents/workflows/` to see available workflows.
 
 ## Keeping Docs Current
 
@@ -17,12 +17,12 @@ When you add/rename/remove:
 
 | Change | Update |
 |--------|--------|
-| A module | Module graph in root `CLAUDE.md` + `docs/architecture.md` |
+| A module | Module graph in root `AGENTS.md` + `docs/architecture.md` |
 | A ViewModel or Screen | Screen tables in `docs/architecture.md` |
 | A dependency with exclusions/constraints | `docs/dependencies.md` |
 | A code pattern agents keep getting wrong | `docs/patterns.md` anti-patterns |
 | A new convention | `docs/patterns.md` |
-| A recurring mistake | Anti-Patterns table in root `CLAUDE.md` |
+| A recurring mistake | Anti-Patterns table in root `AGENTS.md` |
 
 ## Slash Commands
 

@@ -1,12 +1,9 @@
 ---
-description: Commit changes, push, and create a GitHub PR. Lightweight alternative to /commit-pr-greptile — no Greptile review loop.
-agent: build
-subtask: true
+name: commit-pr
+description: Commit changes, push to remote, and create a GitHub PR. Use when completing a feature and ready to open a pull request.
 ---
 
 # Commit, Push, and Create PR
-
-You are an autonomous coding agent that commits code, pushes it, and creates a GitHub PR.
 
 ## Goal
 
@@ -19,8 +16,6 @@ You are an autonomous coding agent that commits code, pushes it, and creates a G
 ---
 
 ## Step 0 — Pre-flight Checks
-
-Run these checks first:
 
 ```bash
 # Confirm we are in a git repo
@@ -59,12 +54,7 @@ If not on a feature branch (e.g., on `main` or `master`):
 3. **Generate commit message**:
    - Review changed files: `git status --short`
    - Review diff stats: `git diff --staged --stat`
-   - Create a descriptive commit message following this format:
-     ```
-     <Short summary (imperative mood)>
-
-     <Detailed bullet points of changes>
-     ```
+   - Create a descriptive commit message (imperative mood, detailed bullet points)
 
 4. **Commit**:
    ```bash
@@ -72,8 +62,8 @@ If not on a feature branch (e.g., on `main` or `master`):
    ```
 
    If commit fails due to pre-commit hooks:
-   - If it's ktfmt/formatting: run `./gradlew ktfmtFormat`, stage changes, and retry commit
-   - If it's other linting: fix the issues, stage, and retry
+   - If it's ktfmt/formatting: run `./gradlew ktfmtFormat`, stage, retry
+   - If it's other linting: fix, stage, retry
    - If it fails twice: inform user and stop
 
 ---
@@ -102,12 +92,9 @@ If push is rejected due to remote having newer commits:
    - If `state` is `"CLOSED"` or `"MERGED"` → create a new PR
 
 2. **If no open PR exists**, create one:
-   - Extract info from commits: `git log $(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|^refs/remotes/origin/||' || echo main)..HEAD --oneline`
+   - Extract info from commits: `git log origin/main..HEAD --oneline`
    - Generate PR title (short, imperative, <70 chars)
-   - Generate PR body with:
-     - Summary section
-     - Changes section (bullet points)
-     - Technical details if applicable
+   - Generate PR body with summary and changes sections
 
    ```bash
    gh pr create --title "<title>" --body "<generated body>"
@@ -133,19 +120,3 @@ If push is rejected due to remote having newer commits:
 | PR creation fails | Show error, ask user to resolve |
 | Existing PR is closed/merged | Ignore it, create a new PR |
 | Remote has newer commits | Do not force-push, ask user to pull/resolve |
-
----
-
-## Final Summary
-
-After completing, show:
-
-```
-## PR Created
-
-**PR**: #<N> — <title>
-**URL**: <pr-url>
-**Branch**: <branch-name>
-**Commits**:
-- <sha> — <commit message>
-```
