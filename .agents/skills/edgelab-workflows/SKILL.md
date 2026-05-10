@@ -7,9 +7,8 @@ description: Agent workflow automation, documentation maintenance checklists, an
 
 ## Agent Workflows
 
-Agent workflows live in `.agent/workflows/` with `// turbo-all` auto-approval.
-
-Run `ls .agent/workflows/` to see available workflows.
+Agent workflows are now embedded as skills in `.agents/skills/`.
+Run `ls .agents/skills/` to see available skills.
 
 ## Keeping Docs Current
 
@@ -17,12 +16,12 @@ When you add/rename/remove:
 
 | Change | Update |
 |--------|--------|
-| A module | Module graph in root `CLAUDE.md` + `docs/architecture.md` |
+| A module | Module graph in root `AGENTS.md` + `docs/architecture.md` |
 | A ViewModel or Screen | Screen tables in `docs/architecture.md` |
 | A dependency with exclusions/constraints | `docs/dependencies.md` |
 | A code pattern agents keep getting wrong | `docs/patterns.md` anti-patterns |
 | A new convention | `docs/patterns.md` |
-| A recurring mistake | Anti-Patterns table in root `CLAUDE.md` |
+| A recurring mistake | Anti-Patterns table in root `AGENTS.md` |
 
 ## Slash Commands
 
@@ -30,4 +29,5 @@ When you add/rename/remove:
 |---------|-------------|
 | `/review` | Review uncommitted changes, a commit, branch diff, or PR with EdgeLab-specific conventions |
 | `/commit-pr` | Commit, push, and create a GitHub PR (no Greptile loop) |
-| `/commit-pr-greptile` | Commit, create PR, poll Greptile review, auto-fix |
+| `/skill:check-pr` | Check a PR for Greptile review comments and status |
+| `/skill:greploop` | Iteratively fix a PR against Greptile review until 5/5 confidence |

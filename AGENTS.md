@@ -22,7 +22,7 @@ Strict unidirectional. No module may depend on a module to its right.
 5. Use `ImmutableList`/`ImmutableMap` from `kotlinx.collections.immutable` in all UiState data classes.
 6. All dependency versions go in `gradle/libs.versions.toml`. Never hardcode in `build.gradle.kts`.
 7. Every feature follows the 3-layer ViewModel pattern: interface + impl in `:presentation`, wrapper in `:app:*`. See `docs/patterns.md`.
-8. Every new ViewModel requires unit tests. Every new Composable screen requires `@Preview`. See `presentation/CLAUDE.md` for specifics.
+8. Every new ViewModel requires unit tests. Every new Composable screen requires `@Preview`. See `presentation/AGENTS.md` for specifics.
 9. IMPORTANT: Read `docs/patterns.md` before adding new classes. Read `docs/testing.md` before writing tests.
 10. Always rethrow `CancellationException` — never swallow in catch blocks.
 11. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
@@ -51,9 +51,9 @@ Read these **before** the corresponding task:
 | Adding a dependency | [`docs/dependencies.md`](docs/dependencies.md) |
 | Adding a module or screen | [`docs/architecture.md`](docs/architecture.md) |
 
-## Scoped CLAUDE.md
+## Scoped AGENTS.md
 
-`presentation/CLAUDE.md` contains module-specific rules. Read it before modifying presentation code.
+`presentation/AGENTS.md` contains module-specific rules. Read it before modifying presentation code.
 
 ## Agent Skills
 
