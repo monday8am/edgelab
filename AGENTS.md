@@ -55,7 +55,21 @@ Read these **before** the corresponding task:
 
 `presentation/AGENTS.md` contains module-specific rules. Read it before modifying presentation code.
 
-## Agent Skills
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in this repo (`monday8am/edgelab`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
+## EdgeLab skills
 
 Load these skills when needed:
 
