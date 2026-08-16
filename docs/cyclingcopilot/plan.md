@@ -6,6 +6,51 @@
 
 ---
 
+## Reality Check (as of 2026-08-15)
+
+This section reconciles the plan below with the actual state of the code. The plan body is preserved verbatim as the *original intent*; the table here is the current truth.
+
+### Build health
+
+- `./gradlew ktfmtCheck` — clean
+- `./gradlew test` — green (78 tasks up-to-date)
+- `./gradlew :app:copilot:lintDebug` — zero issues
+- Dependencies current (~2026-05 bump: AGP 9.1.1, Kotlin 2.3.21, composeBom 2026.05.01, coreKtx 1.19.0, firebase-bom 34.14.1)
+
+### Plan status vs. reality
+
+| Day | Plan task | Reality |
+|-----|-----------|--------|
+| 1 | Segment/Weather repositories | ✅ Built in `:data` + implemented in `:core` (`AssetSegmentRepository`, `AssetWeatherRepository`), wired into `Dependencies` |
+| 2 | Toolbox — 6 tools + executor | ✅ `CyclingToolExecutor`, `CyclingToolDefinitions`, `CyclingOpenApiTool` built and unit-tested in `:agent` |
+| 3 | `CopilotAgent` brain | ✅ `CopilotAgent` built and unit-tested in `:agent` (single-model mode, `initialize`/`ask`, fallback messages) |
+| 4 | Wire brain to LiveRide UI | ⚠️ **Not done.** `LiveRideViewModelImpl.sendTextMessage()` still returns the mock `delay(1500)` → `"Got it! Keeping an eye on the route ahead."`. `CopilotAgent` is never constructed in any app. |
+| 5 | Timestamp-based GPS playback + `elapsedMs` | ⚠️ **Not done.** `SimulatedGpsSource` advances fixed steps (1–8) per tick from the speed multiplier; it does **not** use the `t` field the route coordinates carry. `RideContext`/`elapsedMs` exist in `:agent` but are never instantiated by `LiveRideViewModel`. |
+| 6–10 | Voice, POI/TTS, real GPS, ride summary, polish | ❌ Not started |
+
+### Built-but-unwired infrastructure
+
+These exist and pass tests but are never invoked from a running screen:
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| `CopilotAgent` | `:agent` | Built, unit-tested, **never constructed** |
+| `CyclingToolExecutor` + 6 tools | `:agent` | Built, unit-tested, depends on repos that *are* wired |
+| `Dependencies.inferenceEngine` (`LocalInferenceEngine`) | `:core` → `app/copilot` | Lazy-initialized, **never called** from LiveRide |
+| `Dependencies.segmentRepository` / `weatherRepository` | `:core` → `app/copilot` | Lazy-initialized, **never read** by LiveRide |
+| `elapsedMs` / `RideContext` | `:agent` | Defined and tested, **never built** in the running app |
+
+### Open structural TODOs
+
+- `app/copilot/.../Dependencies.kt:62` — `ModelRepositoryImpl` returns `ModelCatalog.ALL_MODELS`; intended `CopilotModelCatalogProvider` (FunctionGemma 2B + Gemma 2 550M only) not created
+- `presentation/.../onboard/OnboardViewModel.kt:72` — placeholder onboarding URLs
+
+### The conceptual question for reactivation
+
+The whole sprint assumes Day 4 is done. It is not. The brain is built in isolation but never connected to the UI. Everything downstream — voice, TTS, POI, real GPS, ride summary — is downstream of "does the chat actually use the brain." Grilling should start from that gap.
+
+---
+
 ## Current State (as of 2026-03-27)
 
 The app has three screens fully built with UI, navigation, and state management:

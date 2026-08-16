@@ -2,6 +2,17 @@
 
 > This roadmap tracks development of the **EdgeLab** app. The repository also contains **CyclingCopilot**, which has its own [separate roadmap](../cyclingcopilot/roadmap.md).
 
+## Reality Check (as of 2026-08-15)
+
+This roadmap's status markers are accurate — no false-✅. Build health verified on the same date:
+
+- `./gradlew ktfmtCheck` — clean
+- `./gradlew test` — green
+- `./gradlew :app:explorer:lintDebug` — zero issues
+- Dependencies current
+
+The only open items under **Next Up** are model-filtering and server-side aggregation features; none are blocking and none contradict the completed list. Reactivation work is concentrated in **CyclingCopilot** (see its plan's Reality Check), not here.
+
 ## Completed
 
 ### Core Prototype
