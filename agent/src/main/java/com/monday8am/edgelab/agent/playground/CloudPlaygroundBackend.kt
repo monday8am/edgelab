@@ -1,0 +1,106 @@
+package com.monday8am.edgelab.agent.playground
+
+import co.touchlab.kermit.Logger
+import com.monday8am.edgelab.data.playground.Probe
+import kotlinx.coroutines.CancellationException
+
+/**
+ * The cloud Playground backend — the onboarding leg that lets a dev run their first prompts with
+ * zero download (ADR-0002, ADR-0003).
+ *
+ * Unlike the local backend, where litert-lm invokes the Probe handler in-process, a cloud model only
+ * *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
+ * `functionCall`s → hand back each Probe's mock output → read what the model says next, repeating
+ * while the model keeps calling tools. That loop is the whole reason this class exists, and it is
+ * why the provider adapter is kept behind [CloudChatSession] — so the loop is testable with a fake.
+ */
+class CloudPlaygroundBackend(
+    private val chatFactory: CloudChatFactory,
+    private val maxToolRounds: Int = DEFAULT_MAX_TOOL_ROUNDS,
+) : PlaygroundBackend {
+
+    private val logger = Logger.withTag("CloudPlaygroundBackend")
+
+    private var session: CloudChatSession? = null
+
+    /** The Probe set the live [session] was opened with; a change forces a fresh session. */
+    private var sessionProbes: List<Probe> = emptyList()
+
+    /** Nothing to load — the model lives on the server. Kept for [PlaygroundBackend] symmetry. */
+    override suspend fun initialize(): Result<Unit> = Result.success(Unit)
+
+    override suspend fun run(prompt: String, probes: List<Probe>): Result<TurnResult> {
+        return try {
+            val chat = sessionFor(probes)
+            val mocksByName = probes.associate { it.name to it.mockResponse }
+            val recorded = mutableListOf<TurnToolCall>()
+
+            var reply = chat.send(prompt)
+            var round = 0
+            while (reply.calls.isNotEmpty()) {
+                if (round++ >= maxToolRounds) {
+                    // A model that never stops calling tools usually means a mock output that
+                    // doesn't answer the question. Surface it rather than truncating in silence.
+                    return Result.failure(
+                        IllegalStateException(
+                            "Model kept calling tools for more than $maxToolRounds rounds. " +
+                                "Check that the Probe mock outputs actually answer the prompt."
+                        )
+                    )
+                }
+
+                val responses =
+                    reply.calls.map { call ->
+                        val mock = mocksByName[call.name]
+                        if (mock == null) {
+                            // The model invented a tool we never registered. Tell it so, rather
+                            // than failing the turn — that reaction is itself worth seeing.
+                            logger.w("Model called unregistered tool '${call.name}'")
+                            recorded += TurnToolCall(call.name, call.args, UNREGISTERED_TOOL_RESPONSE)
+                            CloudFunctionResponse(call.name, UNREGISTERED_TOOL_RESPONSE)
+                        } else {
+                            recorded += TurnToolCall(call.name, call.args, mock)
+                            CloudFunctionResponse(call.name, mock)
+                        }
+                    }
+
+                reply = chat.respondToCalls(responses)
+            }
+
+            Result.success(TurnResult(text = reply.text, toolCalls = recorded))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.e("Cloud playground turn failed", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Reuses the open session so follow-up prompts keep their history — that continuity is what
+     * makes "did the model actually use the tool output?" probeable. Tools are bound at session
+     * open, so a changed Probe set has to start a new one.
+     */
+    private fun sessionFor(probes: List<Probe>): CloudChatSession {
+        val existing = session
+        if (existing != null && probes.sameProbesAs(sessionProbes)) return existing
+        sessionProbes = probes
+        return chatFactory.open(probes).also { session = it }
+    }
+
+    private fun List<Probe>.sameProbesAs(other: List<Probe>): Boolean =
+        size == other.size && zip(other).all { (a, b) -> a == b }
+
+    override fun close() {
+        session = null
+        sessionProbes = emptyList()
+    }
+
+    private companion object {
+        /** Enough for a genuine multi-tool answer, low enough to catch a runaway loop. */
+        const val DEFAULT_MAX_TOOL_ROUNDS = 5
+
+        const val UNREGISTERED_TOOL_RESPONSE =
+            """{"error": "No such tool is registered in this Playground session."}"""
+    }
+}

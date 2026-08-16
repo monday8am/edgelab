@@ -5,8 +5,13 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.monday8am.edgelab.agent.core.LocalInferenceEngine
+import com.monday8am.edgelab.agent.playground.CloudPlaygroundBackend
+import com.monday8am.edgelab.agent.playground.LocalPlaygroundBackend
 import com.monday8am.edgelab.core.download.ModelDownloadManagerImpl
+import com.monday8am.edgelab.core.inference.FirebaseAiChatFactory
 import com.monday8am.edgelab.core.inference.LiteRTLmInferenceEngineImpl
+import com.monday8am.edgelab.presentation.playground.PlaygroundBackendFactory
+import com.monday8am.edgelab.presentation.playground.PlaygroundTarget
 import com.monday8am.edgelab.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.edgelab.core.storage.AuthRepositoryImpl
 import com.monday8am.edgelab.core.storage.DataStoreAuthorRepository
@@ -33,6 +38,26 @@ object CoreDependencies {
      */
     fun createInferenceEngine(): LocalInferenceEngine {
         return LiteRTLmInferenceEngineImpl()
+    }
+
+    /**
+     * Creates the Playground's backend factory — the one place that knows how to build both legs.
+     *
+     * Cloud needs nothing from the device; local needs the on-disk path of the downloaded bundle,
+     * which is why [downloadManager] is threaded through here rather than into `:presentation`.
+     */
+    fun createPlaygroundBackendFactory(
+        downloadManager: ModelDownloadManager,
+    ): PlaygroundBackendFactory = PlaygroundBackendFactory { target ->
+        when (target) {
+            PlaygroundTarget.Cloud -> CloudPlaygroundBackend(FirebaseAiChatFactory())
+            is PlaygroundTarget.Local ->
+                LocalPlaygroundBackend(
+                    engine = createInferenceEngine(),
+                    model = target.model,
+                    modelPath = downloadManager.getModelPath(target.model.bundleFilename),
+                )
+        }
     }
 
     /**

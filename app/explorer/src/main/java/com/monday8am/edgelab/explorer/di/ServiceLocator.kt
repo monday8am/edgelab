@@ -18,12 +18,15 @@ import com.monday8am.edgelab.data.model.ModelRepositoryImpl
 import com.monday8am.edgelab.data.huggingface.FallbackModelCatalogProvider
 import com.monday8am.edgelab.data.huggingface.HuggingFaceApiClient
 import com.monday8am.edgelab.data.huggingface.HuggingFaceModelRepository
+import com.monday8am.edgelab.data.playground.AssetsProbeRepository
+import com.monday8am.edgelab.data.playground.ProbeRepository
 import com.monday8am.edgelab.data.testing.AssetsTestRepository
 import com.monday8am.edgelab.data.testing.TestRepository
 import com.monday8am.edgelab.data.testing.TestRepositoryImpl
 import com.monday8am.edgelab.explorer.BuildConfig
 import com.monday8am.edgelab.explorer.MainActivity
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
+import com.monday8am.edgelab.presentation.playground.PlaygroundBackendFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -96,6 +99,12 @@ object ServiceLocator {
     }
 
     val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
+
+    val probeRepository: ProbeRepository by lazy { AssetsProbeRepository() }
+
+    val playgroundBackendFactory: PlaygroundBackendFactory by lazy {
+        CoreDependencies.createPlaygroundBackendFactory(modelDownloadManager)
+    }
 
     val json = Json {
         ignoreUnknownKeys = true

@@ -1,0 +1,166 @@
+package com.monday8am.edgelab.core.inference
+
+import com.google.firebase.Firebase
+import com.google.firebase.ai.Chat
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.FunctionDeclaration
+import com.google.firebase.ai.type.FunctionResponsePart
+import com.google.firebase.ai.type.GenerateContentResponse
+import com.google.firebase.ai.type.GenerativeBackend
+import com.google.firebase.ai.type.Schema
+import com.google.firebase.ai.type.Tool
+import com.google.firebase.ai.type.content
+import com.monday8am.edgelab.agent.playground.CloudChatFactory
+import com.monday8am.edgelab.agent.playground.CloudChatSession
+import com.monday8am.edgelab.agent.playground.CloudFunctionCall
+import com.monday8am.edgelab.agent.playground.CloudFunctionResponse
+import com.monday8am.edgelab.agent.playground.CloudReply
+import com.monday8am.edgelab.data.playground.Probe
+import com.monday8am.edgelab.data.testing.ToolSpecification
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
+
+/**
+ * Reaches Gemini through Firebase AI Logic, which holds the API key server-side — the app ships no
+ * key and the dev supplies none (plan.md "Cloud leg", ADR-0002).
+ *
+ * Requires the consuming app to provide a `google-services.json` and apply the
+ * `com.google.gms.google-services` plugin; without it [open] throws at first use.
+ */
+class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL) :
+    CloudChatFactory {
+
+    override fun open(probes: List<Probe>): CloudChatSession {
+        val tools =
+            if (probes.isEmpty()) emptyList()
+            else listOf(Tool.functionDeclarations(probes.map { it.toolSpec.toDeclaration() }))
+
+        val ai =
+            try {
+                Firebase.ai(backend = GenerativeBackend.googleAI())
+            } catch (e: IllegalStateException) {
+                // Firebase is unconfigured far more often than it is broken, and the SDK's own
+                // message ("Default FirebaseApp is not initialized") doesn't say what to do.
+                throw IllegalStateException(SETUP_REQUIRED_MESSAGE, e)
+            }
+
+        return FirebaseAiChatSession(
+            ai.generativeModel(modelName = modelName, tools = tools).startChat()
+        )
+    }
+
+    companion object {
+        /** Cheapest Gemini tier with genuinely good tool calling (plan.md "Cloud leg"). */
+        const val DEFAULT_CLOUD_MODEL = "gemini-2.5-flash"
+
+        internal const val SETUP_REQUIRED_MESSAGE =
+            "Cloud Playground is not configured. Add google-services.json to app/explorer and " +
+                "apply the com.google.gms.google-services plugin — see docs/edgelab/plan.md. " +
+                "Until then, download a model and switch to the on-device target."
+    }
+}
+
+private class FirebaseAiChatSession(private val chat: Chat) : CloudChatSession {
+
+    override suspend fun send(prompt: String): CloudReply = chat.sendMessage(prompt).toCloudReply()
+
+    override suspend fun respondToCalls(responses: List<CloudFunctionResponse>): CloudReply {
+        val turn =
+            content(role = "function") {
+                responses.forEach { part(FunctionResponsePart(it.name, it.jsonResponse.asJsonObject())) }
+            }
+        return chat.sendMessage(turn).toCloudReply()
+    }
+}
+
+private fun GenerateContentResponse.toCloudReply(): CloudReply =
+    CloudReply(
+        text = text.orEmpty(),
+        calls = functionCalls.map { CloudFunctionCall(it.name, it.args.mapValues { (_, v) -> v.unwrap() }) },
+    )
+
+/**
+ * A Probe's mock output is free-form text the dev typed. Gemini requires a JSON *object*, so
+ * anything that isn't one is wrapped rather than rejected — a plain-string mock is a legitimate
+ * thing to probe with.
+ */
+private fun String.asJsonObject(): JsonObject =
+    runCatching { kotlinx.serialization.json.Json.parseToJsonElement(this).jsonObject }
+        .getOrElse { buildJsonObject { put("result", this@asJsonObject) } }
+
+/** Flattens a JSON value into the plain Kotlin the Trace displays. */
+private fun kotlinx.serialization.json.JsonElement.unwrap(): Any? =
+    when (this) {
+        is JsonPrimitive ->
+            if (isString) content
+            else booleanOrNull ?: longOrNull ?: doubleOrNull ?: content.takeIf { it != "null" }
+        is JsonArray -> map { it.unwrap() }
+        is JsonObject -> mapValues { (_, v) -> v.unwrap() }
+    }
+
+/**
+ * Converts a Probe's OpenAI-style tool spec into Gemini's declaration shape. The two agree on
+ * structure, so this is a mechanical walk of the JSON Schema — the only real translation is that
+ * Gemini names the *optional* properties where OpenAI names the required ones.
+ */
+private fun ToolSpecification.toDeclaration(): FunctionDeclaration {
+    val params = function.parameters as? JsonObject
+    val properties = params?.get("properties") as? JsonObject ?: JsonObject(emptyMap())
+    val required =
+        (params?.get("required") as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.content }
+            ?.toSet()
+            .orEmpty()
+
+    return FunctionDeclaration(
+        function.name,
+        function.description,
+        properties.mapValues { (_, schema) -> (schema as? JsonObject).toGeminiSchema() },
+        properties.keys.filterNot { it in required },
+    )
+}
+
+private fun JsonObject?.toGeminiSchema(): Schema {
+    val description = this?.stringField("description")
+    val enumValues =
+        (this?.get("enum") as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content }
+    if (!enumValues.isNullOrEmpty()) {
+        return Schema.enumeration(values = enumValues, description = description)
+    }
+
+    return when (this?.stringField("type")) {
+        "integer" -> Schema.long(description = description)
+        "number" -> Schema.double(description = description)
+        "boolean" -> Schema.boolean(description = description)
+        "array" ->
+            Schema.array(
+                items = (this["items"] as? JsonObject).toGeminiSchema(),
+                description = description,
+            )
+        "object" -> {
+            val nested = this["properties"] as? JsonObject ?: JsonObject(emptyMap())
+            val nestedRequired =
+                (this["required"] as? JsonArray)
+                    ?.mapNotNull { (it as? JsonPrimitive)?.content }
+                    ?.toSet()
+                    .orEmpty()
+            Schema.obj(
+                properties = nested.mapValues { (_, v) -> (v as? JsonObject).toGeminiSchema() },
+                optionalProperties = nested.keys.filterNot { it in nestedRequired },
+                description = description,
+            )
+        }
+        else -> Schema.string(description = description)
+    }
+}
+
+private fun JsonObject.stringField(name: String): String? =
+    (this[name] as? JsonPrimitive)?.takeIf { it.isString }?.content

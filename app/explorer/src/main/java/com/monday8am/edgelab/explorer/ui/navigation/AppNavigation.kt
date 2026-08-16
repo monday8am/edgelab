@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.monday8am.edgelab.explorer.ui.screens.authormanager.AuthorManagerScreen
 import com.monday8am.edgelab.explorer.ui.screens.modelselector.ModelSelectorScreen
+import com.monday8am.edgelab.explorer.ui.screens.playground.PlaygroundScreen
 import com.monday8am.edgelab.explorer.ui.screens.testdetails.TestDetailsScreen
 import com.monday8am.edgelab.explorer.ui.screens.testing.TestScreen
 
@@ -19,9 +20,15 @@ fun AppNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Route.ModelSelector,
+        startDestination = Route.Playground,
         modifier = modifier,
     ) {
+        composable<Route.Playground> {
+            PlaygroundScreen(
+                onNavigateToModelSelector = { navController.navigate(Route.ModelSelector) },
+            )
+        }
+
         composable<Route.ModelSelector> {
             ModelSelectorScreen(
                 onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) },
