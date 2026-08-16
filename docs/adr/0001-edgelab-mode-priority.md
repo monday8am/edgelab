@@ -1,0 +1,5 @@
+# EdgeLab mode priority: Playground primary, Test Suite secondary, Benchmark opt-in
+
+EdgeLab's job is to let Android devs try real models on-device for function calling. We resolve the tension between "playground" (try a model), "test suite" (run predefined scenarios), and "benchmark" (compare models) by fixing an order: **Playground is the primary mode, Test Suite is secondary, Benchmark is an opt-in side effect of consenting dev runs — not a mode the dev enters.**
+
+We evolve the existing Test Suite app toward this rather than reorienting it: keep the working Test Suite code intact, add Playground as the new primary nav entry, and lightly reskin Test Suite to demote it. We rejected "build Playground from scratch then re-add Test Suite" (throws away green, tested infra) and "MoSCoW weighting that leaves Test Suite on the front page" (re-introduces the "users don't understand the app from the start" problem).
