@@ -8,8 +8,8 @@ import kotlinx.coroutines.CancellationException
  * The cloud Playground backend — the onboarding leg that lets a dev run their first prompts with
  * zero download (ADR-0002, ADR-0003).
  *
- * Unlike the local backend, where litert-lm invokes the Probe handler in-process, a cloud model only
- * *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
+ * Unlike the local backend, where litert-lm invokes the Probe handler in-process, a cloud model
+ * only *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
  * `functionCall`s → hand back each Probe's mock output → read what the model says next, repeating
  * while the model keeps calling tools. That loop is the whole reason this class exists, and it is
  * why the provider adapter is kept behind [CloudChatSession] — so the loop is testable with a fake.
@@ -56,7 +56,8 @@ class CloudPlaygroundBackend(
                             // The model invented a tool we never registered. Tell it so, rather
                             // than failing the turn — that reaction is itself worth seeing.
                             logger.w("Model called unregistered tool '${call.name}'")
-                            recorded += TurnToolCall(call.name, call.args, UNREGISTERED_TOOL_RESPONSE)
+                            recorded +=
+                                TurnToolCall(call.name, call.args, UNREGISTERED_TOOL_RESPONSE)
                             CloudFunctionResponse(call.name, UNREGISTERED_TOOL_RESPONSE)
                         } else {
                             recorded += TurnToolCall(call.name, call.args, mock)

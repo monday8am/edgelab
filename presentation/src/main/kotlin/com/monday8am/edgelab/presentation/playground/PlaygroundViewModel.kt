@@ -72,7 +72,9 @@ sealed interface PlaygroundTarget {
     data class Local(val model: ModelConfiguration) : PlaygroundTarget
 }
 
-/** Builds the backend for a [PlaygroundTarget]. Implemented in `:core`, which owns both providers. */
+/**
+ * Builds the backend for a [PlaygroundTarget]. Implemented in `:core`, which owns both providers.
+ */
 fun interface PlaygroundBackendFactory {
     fun create(target: PlaygroundTarget): PlaygroundBackend
 }

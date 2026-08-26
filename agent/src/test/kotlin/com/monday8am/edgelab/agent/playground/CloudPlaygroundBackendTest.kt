@@ -30,7 +30,10 @@ class CloudPlaygroundBackendTest {
         val chat =
             ScriptedChat(
                 listOf(
-                    CloudReply("", listOf(CloudFunctionCall("get_weather", mapOf("city" to "Madrid")))),
+                    CloudReply(
+                        "",
+                        listOf(CloudFunctionCall("get_weather", mapOf("city" to "Madrid"))),
+                    ),
                     CloudReply("It's 21 degrees in Madrid.", emptyList()),
                 )
             )
@@ -52,7 +55,10 @@ class CloudPlaygroundBackendTest {
         val chat =
             ScriptedChat(
                 listOf(
-                    CloudReply("", listOf(CloudFunctionCall("get_weather", mapOf("city" to "Madrid")))),
+                    CloudReply(
+                        "",
+                        listOf(CloudFunctionCall("get_weather", mapOf("city" to "Madrid"))),
+                    ),
                     CloudReply("Done.", emptyList()),
                 )
             )
@@ -119,7 +125,10 @@ class CloudPlaygroundBackendTest {
             val forever =
                 List(20) { CloudReply("", listOf(CloudFunctionCall("get_weather", emptyMap()))) }
             val backend =
-                CloudPlaygroundBackend(CloudChatFactory { ScriptedChat(forever) }, maxToolRounds = 3)
+                CloudPlaygroundBackend(
+                    CloudChatFactory { ScriptedChat(forever) },
+                    maxToolRounds = 3,
+                )
 
             val error = backend.run("Weather?", listOf(probe)).exceptionOrNull()
 
@@ -226,8 +235,7 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `initialize succeeds without touching the network`() = runTest {
-        val backend =
-            CloudPlaygroundBackend(CloudChatFactory { error("must not open a session") })
+        val backend = CloudPlaygroundBackend(CloudChatFactory { error("must not open a session") })
 
         assertTrue(backend.initialize().isSuccess)
     }

@@ -78,7 +78,10 @@ class PlaygroundViewModelTest {
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.error)
-        assertEquals<List<PlaygroundTarget>>(listOf(PlaygroundTarget.Cloud), backendFactory.requestedTargets)
+        assertEquals<List<PlaygroundTarget>>(
+            listOf(PlaygroundTarget.Cloud),
+            backendFactory.requestedTargets,
+        )
         assertTrue(viewModel.uiState.value.trace.any { it is TraceEntry.ModelText })
         viewModel.dispose()
     }
@@ -268,7 +271,10 @@ class PlaygroundViewModelTest {
         viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
         advanceUntilIdle()
 
-        assertEquals<List<PlaygroundTarget>>(listOf(PlaygroundTarget.Cloud), backendFactory.requestedTargets)
+        assertEquals<List<PlaygroundTarget>>(
+            listOf(PlaygroundTarget.Cloud),
+            backendFactory.requestedTargets,
+        )
         assertEquals(2, backend.runCallCount)
         viewModel.dispose()
     }

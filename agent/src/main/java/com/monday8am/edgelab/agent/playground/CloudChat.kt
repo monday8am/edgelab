@@ -6,8 +6,8 @@ import com.monday8am.edgelab.data.playground.Probe
  * A live multi-turn conversation with a cloud model that can call functions.
  *
  * Deliberately narrow and provider-free: the Firebase AI Logic adapter lives in `:core` (it needs
- * Android + Firebase), while [CloudPlaygroundBackend] — which owns the actual tool-call loop — stays
- * here in pure Kotlin where it can be tested against a fake.
+ * Android + Firebase), while [CloudPlaygroundBackend] — which owns the actual tool-call loop —
+ * stays here in pure Kotlin where it can be tested against a fake.
  *
  * Tools are bound when the session is opened, so a change to the Probe set needs a new session.
  */
@@ -33,5 +33,8 @@ data class CloudReply(val text: String, val calls: List<CloudFunctionCall>)
 /** A function the cloud model asked to call. */
 data class CloudFunctionCall(val name: String, val args: Map<String, Any?>)
 
-/** The mock output being handed back to the model for one call. [jsonResponse] must be a JSON object. */
+/**
+ * The mock output being handed back to the model for one call. [jsonResponse] must be a JSON
+ * object.
+ */
 data class CloudFunctionResponse(val name: String, val jsonResponse: String)

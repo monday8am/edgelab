@@ -14,8 +14,8 @@ import kotlinx.coroutines.CancellationException
  * responses come back already recorded on the handlers. (Contrast [CloudPlaygroundBackend], which
  * has to drive that loop itself.)
  *
- * This is also the boundary that keeps `OpenApiToolHandler` — which extends `litertlm.OpenApiTool` —
- * out of `:presentation`. Callers see only [TurnResult].
+ * This is also the boundary that keeps `OpenApiToolHandler` — which extends `litertlm.OpenApiTool`
+ * — out of `:presentation`. Callers see only [TurnResult].
  *
  * Single-turn in v1a: each [run] resets the conversation and registers tools afresh. The model is
  * loaded once via [initialize]; later turns reuse the loaded weights.
