@@ -1,6 +1,6 @@
 package com.monday8am.edgelab.agent.playground
 
-import com.monday8am.edgelab.data.playground.Probe
+import com.monday8am.edgelab.data.testing.ToolSpecification
 
 /**
  * One Playground inference backend — cloud (Gemini) or local (LiteRT-LM).
@@ -13,10 +13,15 @@ interface PlaygroundBackend {
     suspend fun initialize(): Result<Unit>
 
     /**
-     * Runs one turn: registers [probes] as callable tools, sends [prompt], and reports the model's
-     * final text plus every tool call it made (paired with the mock response it received).
+     * Runs one turn: registers [tools] as callable tools, sends [prompt], and reports the model's
+     * final text plus every tool call it made (paired with the mock response it received from
+     * [mockResponses], keyed by tool name).
      */
-    suspend fun run(prompt: String, probes: List<Probe>): Result<TurnResult>
+    suspend fun run(
+        prompt: String,
+        tools: List<ToolSpecification>,
+        mockResponses: Map<String, String>,
+    ): Result<TurnResult>
 
     /** Releases the underlying session. */
     fun close()

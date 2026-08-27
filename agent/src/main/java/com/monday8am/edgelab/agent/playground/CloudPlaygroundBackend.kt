@@ -1,16 +1,16 @@
 package com.monday8am.edgelab.agent.playground
 
 import co.touchlab.kermit.Logger
-import com.monday8am.edgelab.data.playground.Probe
+import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.coroutines.CancellationException
 
 /**
  * The cloud Playground backend — the onboarding leg that lets a dev run their first prompts with
  * zero download (ADR-0002, ADR-0003).
  *
- * Unlike the local backend, where litert-lm invokes the Probe handler in-process, a cloud model
- * only *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
- * `functionCall`s → hand back each Probe's mock output → read what the model says next, repeating
+ * Unlike the local backend, where litert-lm invokes the tool handler in-process, a cloud model only
+ * *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
+ * `functionCall`s → hand back each tool's mock output → read what the model says next, repeating
  * while the model keeps calling tools. That loop is the whole reason this class exists, and it is
  * why the provider adapter is kept behind [CloudChatSession] — so the loop is testable with a fake.
  */
@@ -23,16 +23,19 @@ class CloudPlaygroundBackend(
 
     private var session: CloudChatSession? = null
 
-    /** The Probe set the live [session] was opened with; a change forces a fresh session. */
-    private var sessionProbes: List<Probe> = emptyList()
+    /** The tool set the live [session] was opened with; a change forces a fresh session. */
+    private var sessionTools: List<ToolSpecification> = emptyList()
 
     /** Nothing to load — the model lives on the server. Kept for [PlaygroundBackend] symmetry. */
     override suspend fun initialize(): Result<Unit> = Result.success(Unit)
 
-    override suspend fun run(prompt: String, probes: List<Probe>): Result<TurnResult> {
+    override suspend fun run(
+        prompt: String,
+        tools: List<ToolSpecification>,
+        mockResponses: Map<String, String>,
+    ): Result<TurnResult> {
         return try {
-            val chat = sessionFor(probes)
-            val mocksByName = probes.associate { it.name to it.mockResponse }
+            val chat = sessionFor(tools)
             val recorded = mutableListOf<TurnToolCall>()
 
             var reply = chat.send(prompt)
@@ -44,14 +47,14 @@ class CloudPlaygroundBackend(
                     return Result.failure(
                         IllegalStateException(
                             "Model kept calling tools for more than $maxToolRounds rounds. " +
-                                "Check that the Probe mock outputs actually answer the prompt."
+                                "Check that the tool mock outputs actually answer the prompt."
                         )
                     )
                 }
 
                 val responses =
                     reply.calls.map { call ->
-                        val mock = mocksByName[call.name]
+                        val mock = mockResponses[call.name]
                         if (mock == null) {
                             // The model invented a tool we never registered. Tell it so, rather
                             // than failing the turn — that reaction is itself worth seeing.
@@ -80,21 +83,21 @@ class CloudPlaygroundBackend(
     /**
      * Reuses the open session so follow-up prompts keep their history — that continuity is what
      * makes "did the model actually use the tool output?" probeable. Tools are bound at session
-     * open, so a changed Probe set has to start a new one.
+     * open, so a changed tool set has to start a new one.
      */
-    private fun sessionFor(probes: List<Probe>): CloudChatSession {
+    private fun sessionFor(tools: List<ToolSpecification>): CloudChatSession {
         val existing = session
-        if (existing != null && probes.sameProbesAs(sessionProbes)) return existing
-        sessionProbes = probes
-        return chatFactory.open(probes).also { session = it }
+        if (existing != null && tools.sameToolsAs(sessionTools)) return existing
+        sessionTools = tools
+        return chatFactory.open(tools).also { session = it }
     }
 
-    private fun List<Probe>.sameProbesAs(other: List<Probe>): Boolean =
+    private fun List<ToolSpecification>.sameToolsAs(other: List<ToolSpecification>): Boolean =
         size == other.size && zip(other).all { (a, b) -> a == b }
 
     override fun close() {
         session = null
-        sessionProbes = emptyList()
+        sessionTools = emptyList()
     }
 
     private companion object {

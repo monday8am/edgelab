@@ -4,13 +4,13 @@ import co.touchlab.kermit.Logger
 import com.monday8am.edgelab.agent.core.LocalInferenceEngine
 import com.monday8am.edgelab.agent.tools.OpenApiToolHandler
 import com.monday8am.edgelab.data.model.ModelConfiguration
-import com.monday8am.edgelab.data.playground.Probe
+import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.coroutines.CancellationException
 
 /**
  * The on-device Playground backend, running a `.litertlm` model through [LocalInferenceEngine].
  *
- * litert-lm invokes the Probe handler in-process, so there is no explicit tool loop here — the mock
+ * litert-lm invokes the tool handler in-process, so there is no explicit tool loop here — the mock
  * responses come back already recorded on the handlers. (Contrast [CloudPlaygroundBackend], which
  * has to drive that loop itself.)
  *
@@ -38,27 +38,27 @@ class LocalPlaygroundBackend(
             .onFailure { e -> logger.e("Engine initialize failed", e) }
     }
 
-    override suspend fun run(prompt: String, probes: List<Probe>): Result<TurnResult> {
+    override suspend fun run(
+        prompt: String,
+        tools: List<ToolSpecification>,
+        mockResponses: Map<String, String>,
+    ): Result<TurnResult> {
         return try {
-            val handlersWithProbes = probes.map {
-                OpenApiToolHandler(it.toolSpec, it.mockResponse) to it
+            val handlersWithMocks = tools.map { tool ->
+                val mock = mockResponses[tool.function.name].orEmpty()
+                OpenApiToolHandler(tool, mock) to mock
             }
-            val handlers = handlersWithProbes.map { it.first }
 
-            engine.setToolsAndResetConversation(handlers)
+            engine.setToolsAndResetConversation(handlersWithMocks.map { it.first })
 
             val text =
                 engine.prompt(prompt).getOrElse { e ->
                     return Result.failure(e)
                 }
 
-            val calls = handlersWithProbes.flatMap { (handler, probe) ->
+            val calls = handlersWithMocks.flatMap { (handler, mock) ->
                 handler.calls.map { call ->
-                    TurnToolCall(
-                        name = call.name,
-                        args = call.args,
-                        mockResponse = probe.mockResponse,
-                    )
+                    TurnToolCall(name = call.name, args = call.args, mockResponse = mock)
                 }
             }
 

@@ -15,7 +15,6 @@ import com.monday8am.edgelab.agent.playground.CloudChatSession
 import com.monday8am.edgelab.agent.playground.CloudFunctionCall
 import com.monday8am.edgelab.agent.playground.CloudFunctionResponse
 import com.monday8am.edgelab.agent.playground.CloudReply
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -38,10 +37,10 @@ import kotlinx.serialization.json.put
 class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL) :
     CloudChatFactory {
 
-    override fun open(probes: List<Probe>): CloudChatSession {
-        val tools =
-            if (probes.isEmpty()) emptyList()
-            else listOf(Tool.functionDeclarations(probes.map { it.toolSpec.toDeclaration() }))
+    override fun open(tools: List<ToolSpecification>): CloudChatSession {
+        val declarations =
+            if (tools.isEmpty()) emptyList()
+            else listOf(Tool.functionDeclarations(tools.map { it.toDeclaration() }))
 
         val ai =
             try {
@@ -53,7 +52,7 @@ class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL)
             }
 
         return FirebaseAiChatSession(
-            ai.generativeModel(modelName = modelName, tools = tools).startChat()
+            ai.generativeModel(modelName = modelName, tools = declarations).startChat()
         )
     }
 
@@ -88,7 +87,7 @@ private fun GenerateContentResponse.toCloudReply(): CloudReply =
     )
 
 /**
- * A Probe's mock output is free-form text the dev typed. Gemini requires a JSON *object*, so
+ * A tool's mock output is free-form text the dev typed. Gemini requires a JSON *object*, so
  * anything that isn't one is wrapped rather than rejected — a plain-string mock is a legitimate
  * thing to probe with.
  */
@@ -107,7 +106,7 @@ private fun kotlinx.serialization.json.JsonElement.unwrap(): Any? =
     }
 
 /**
- * Converts a Probe's OpenAI-style tool spec into Gemini's declaration shape. The two agree on
+ * Converts an OpenAI-style tool spec into Gemini's declaration shape. The two agree on
  * structure, so this is a mechanical walk of the JSON Schema — the only real translation is that
  * Gemini names the *optional* properties where OpenAI names the required ones.
  */

@@ -12,37 +12,50 @@ class AssetsProbeRepositoryTest {
     private val repository = AssetsProbeRepository()
 
     @Test
-    fun `getProbesAsFlow should load preset probes from bundled json`() = runTest {
-        val probes = repository.getProbesAsFlow().first()
+    fun `getToolsAsFlow should load preset tools from bundled json`() = runTest {
+        val tools = repository.getToolsAsFlow().first()
 
-        assertTrue(probes.isNotEmpty(), "Expected preset probes seeded from tool_tests.json")
+        assertTrue(tools.isNotEmpty(), "Expected preset tools seeded from tool_tests.json")
     }
 
     @Test
-    fun `loaded probes should be deduplicated by tool name`() = runTest {
-        val probes = repository.getProbesAsFlow().first()
+    fun `loaded tools should be deduplicated by tool name`() = runTest {
+        val tools = repository.getToolsAsFlow().first()
 
-        val names = probes.map { it.name }
-        assertEquals(names.size, names.toSet().size, "Probe names must be unique")
+        val names = tools.map { it.function.name }
+        assertEquals(names.size, names.toSet().size, "Tool names must be unique")
     }
 
     @Test
-    fun `get_location probe should be present with a mock response`() = runTest {
-        val probes = repository.getProbesAsFlow().first()
+    fun `getMockResponsesAsFlow should carry a mock for every preset tool`() = runTest {
+        val tools = repository.getToolsAsFlow().first()
+        val mocks = repository.getMockResponsesAsFlow().first()
 
-        val location = probes.firstOrNull { it.name == "get_location" }
+        tools.forEach { tool ->
+            val mock = mocks[tool.function.name]
+            assertNotNull(mock, "Expected a mock response for '${tool.function.name}'")
+            assertTrue(mock.isNotBlank(), "Mock response must not be blank")
+        }
+    }
+
+    @Test
+    fun `get_location tool should be present with a mock response`() = runTest {
+        val tools = repository.getToolsAsFlow().first()
+        val mocks = repository.getMockResponsesAsFlow().first()
+
+        val location = tools.firstOrNull { it.function.name == "get_location" }
         assertNotNull(location, "Expected get_location preset seeded from test 1")
-        assertTrue(location.mockResponse.isNotBlank(), "Probe must carry a mock response")
-        assertTrue(location.toolSpec.function.parameters.toString().contains("object"))
+        assertTrue(mocks["get_location"].orEmpty().isNotBlank())
+        assertTrue(location.function.parameters.toString().contains("object"))
     }
 
     @Test
-    fun `every probe should have a name and description`() = runTest {
-        val probes = repository.getProbesAsFlow().first()
+    fun `every tool should have a name and description`() = runTest {
+        val tools = repository.getToolsAsFlow().first()
 
-        probes.forEach { probe ->
-            assertTrue(probe.name.isNotBlank(), "Probe name must not be blank")
-            assertTrue(probe.description.isNotBlank(), "Probe description must not be blank")
+        tools.forEach { tool ->
+            assertTrue(tool.function.name.isNotBlank(), "Tool name must not be blank")
+            assertTrue(tool.function.description.isNotBlank(), "Tool description must not be blank")
         }
     }
 }

@@ -98,13 +98,13 @@ class PlaygroundViewModelTest {
 
     @Test
     fun `Initialize should expose preset probes from the repository`() = runTest {
-        val preset = testProbe("get_location", mockResponse = "{\"lat\":1}")
-        probes.setProbes(listOf(preset))
+        val preset = testTool("get_location")
+        probes.setProbes(listOf(preset), mapOf("get_location" to "{\"lat\":1}"))
         val viewModel = createViewModel()
         advanceUntilIdle()
 
         assertEquals(1, viewModel.uiState.value.availableProbes.size)
-        assertEquals("get_location", viewModel.uiState.value.availableProbes.first().name)
+        assertEquals("get_location", viewModel.uiState.value.availableProbes.first().function.name)
         viewModel.dispose()
     }
 
@@ -141,8 +141,8 @@ class PlaygroundViewModelTest {
 
     @Test
     fun `AddProbe then RemoveProbe should toggle active probes`() = runTest {
-        val preset = testProbe("get_weather")
-        probes.setProbes(listOf(preset))
+        val preset = testTool("get_weather")
+        probes.setProbes(listOf(preset), mapOf("get_weather" to "{\"ok\":true}"))
         val viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -158,8 +158,8 @@ class PlaygroundViewModelTest {
 
     @Test
     fun `AddProbe should be idempotent for the same probe`() = runTest {
-        val preset = testProbe("get_weather")
-        probes.setProbes(listOf(preset))
+        val preset = testTool("get_weather")
+        probes.setProbes(listOf(preset), mapOf("get_weather" to "{\"ok\":true}"))
         val viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -172,9 +172,10 @@ class PlaygroundViewModelTest {
     }
 
     @Test
-    fun `RunPrompt should hand the active probes to the backend`() = runTest {
-        val preset = testProbe("get_weather")
-        probes.setProbes(listOf(preset))
+    fun `RunPrompt should hand the active probes and mocks to the backend`() = runTest {
+        val preset = testTool("get_weather")
+        val mocks = mapOf("get_weather" to "{\"ok\":true}")
+        probes.setProbes(listOf(preset), mocks)
         val viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -183,7 +184,8 @@ class PlaygroundViewModelTest {
         viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
         advanceUntilIdle()
 
-        assertEquals(listOf(preset), backend.lastProbes)
+        assertEquals(listOf(preset), backend.lastTools)
+        assertEquals(mocks, backend.lastMockResponses)
         viewModel.dispose()
     }
 

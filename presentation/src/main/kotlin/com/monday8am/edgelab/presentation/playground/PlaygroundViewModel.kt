@@ -6,8 +6,8 @@ import com.monday8am.edgelab.agent.playground.TurnResult
 import com.monday8am.edgelab.agent.playground.TurnToolCall
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.model.ModelRepository
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.playground.ProbeRepository
+import com.monday8am.edgelab.data.testing.ToolSpecification
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.collections.immutable.ImmutableList
@@ -80,8 +80,8 @@ fun interface PlaygroundBackendFactory {
 }
 
 data class PlaygroundUiState(
-    val availableProbes: ImmutableList<Probe> = persistentListOf(),
-    val activeProbes: ImmutableList<Probe> = persistentListOf(),
+    val availableProbes: ImmutableList<ToolSpecification> = persistentListOf(),
+    val activeProbes: ImmutableList<ToolSpecification> = persistentListOf(),
     val prompt: String = "",
     val trace: ImmutableList<TraceEntry> = persistentListOf(),
     val target: PlaygroundTarget = PlaygroundTarget.Cloud,
@@ -92,9 +92,9 @@ data class PlaygroundUiState(
 )
 
 sealed class PlaygroundUiAction {
-    data class AddProbe(val probe: Probe) : PlaygroundUiAction()
+    data class AddProbe(val probe: ToolSpecification) : PlaygroundUiAction()
 
-    data class RemoveProbe(val probe: Probe) : PlaygroundUiAction()
+    data class RemoveProbe(val probe: ToolSpecification) : PlaygroundUiAction()
 
     data class PromptChanged(val text: String) : PlaygroundUiAction()
 
@@ -134,7 +134,7 @@ class PlaygroundViewModelImpl(
 
     private data class ViewModelState(
         val prompt: String = "",
-        val activeProbes: PersistentList<Probe> = persistentListOf(),
+        val activeProbes: PersistentList<ToolSpecification> = persistentListOf(),
         val trace: PersistentList<TraceEntry> = persistentListOf(),
         val target: PlaygroundTarget = PlaygroundTarget.Cloud,
         val isRunning: Boolean = false,
@@ -143,8 +143,12 @@ class PlaygroundViewModelImpl(
 
     private val viewModelState = MutableStateFlow(ViewModelState())
 
-    private val availableProbes: StateFlow<List<Probe>> =
-        probeRepository.getProbesAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyList())
+    private val availableProbes: StateFlow<List<ToolSpecification>> =
+        probeRepository.getToolsAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    /** Mock response for each preset tool, keyed by tool name — handed to the backend on run. */
+    private val mockResponses: StateFlow<Map<String, String>> =
+        probeRepository.getMockResponsesAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     private val downloadedModels: StateFlow<List<ModelConfiguration>> =
         modelDownloadManager.modelsStatus
@@ -168,7 +172,8 @@ class PlaygroundViewModelImpl(
         when (action) {
             is PlaygroundUiAction.AddProbe ->
                 viewModelState.update { state ->
-                    if (state.activeProbes.any { it.id == action.probe.id }) state
+                    if (state.activeProbes.any { it.function.name == action.probe.function.name })
+                        state
                     else
                         state.copy(
                             activeProbes = (state.activeProbes + action.probe).toPersistentList()
@@ -179,7 +184,7 @@ class PlaygroundViewModelImpl(
                     state.copy(
                         activeProbes =
                             state.activeProbes
-                                .filterNot { it.id == action.probe.id }
+                                .filterNot { it.function.name == action.probe.function.name }
                                 .toPersistentList()
                     )
                 }
@@ -212,12 +217,15 @@ class PlaygroundViewModelImpl(
             )
         }
 
-        scope.launch { executeTurn(state.target, state.activeProbes, promptText) }
+        scope.launch {
+            executeTurn(state.target, state.activeProbes, mockResponses.value, promptText)
+        }
     }
 
     private suspend fun executeTurn(
         target: PlaygroundTarget,
-        activeProbes: List<Probe>,
+        activeProbes: List<ToolSpecification>,
+        mockResponses: Map<String, String>,
         promptText: String,
     ) {
         try {
@@ -229,7 +237,7 @@ class PlaygroundViewModelImpl(
             }
 
             val turn =
-                backend.run(promptText, activeProbes).getOrElse { e ->
+                backend.run(promptText, activeProbes, mockResponses).getOrElse { e ->
                     logger.e("Inference failed", e)
                     appendTrace(
                         TraceEntry.Error(nextTraceId(), "Inference failed: ${e.message ?: ""}")
@@ -289,7 +297,7 @@ class PlaygroundViewModelImpl(
     private fun nextTraceId(): String = "trace_${traceIdCounter.getAndIncrement()}"
 
     private fun deriveUiState(
-        probes: List<Probe>,
+        probes: List<ToolSpecification>,
         models: List<ModelConfiguration>,
         state: ViewModelState,
     ): PlaygroundUiState =

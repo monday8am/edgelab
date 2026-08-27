@@ -1,6 +1,5 @@
 package com.monday8am.edgelab.agent.playground
 
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.testing.FunctionSpec
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlin.test.Test
@@ -18,15 +17,16 @@ class CloudPlaygroundBackendTest {
         val chat = ScriptedChat(listOf(CloudReply("Madrid is sunny.", emptyList())))
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("What's the weather?", emptyList()).getOrThrow()
+        val result = backend.run("What's the weather?", emptyList(), emptyMap()).getOrThrow()
 
         assertEquals("Madrid is sunny.", result.text)
         assertTrue(result.toolCalls.isEmpty())
     }
 
     @Test
-    fun `run feeds the probe mock back to the model and returns its follow-up text`() = runTest {
-        val probe = probe("get_weather", mock = """{"tempC": 21}""")
+    fun `run feeds the tool mock back to the model and returns its follow-up text`() = runTest {
+        val weather = tool("get_weather")
+        val mocks = mapOf("get_weather" to """{"tempC": 21}""")
         val chat =
             ScriptedChat(
                 listOf(
@@ -39,7 +39,7 @@ class CloudPlaygroundBackendTest {
             )
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("Weather in Madrid?", listOf(probe)).getOrThrow()
+        val result = backend.run("Weather in Madrid?", listOf(weather), mocks).getOrThrow()
 
         // The mock the dev authored is exactly what went back over the wire.
         assertEquals(
@@ -51,7 +51,8 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `run records each tool call with the args and the mock it received`() = runTest {
-        val probe = probe("get_weather", mock = """{"tempC": 21}""")
+        val weather = tool("get_weather")
+        val mocks = mapOf("get_weather" to """{"tempC": 21}""")
         val chat =
             ScriptedChat(
                 listOf(
@@ -64,7 +65,7 @@ class CloudPlaygroundBackendTest {
             )
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("Weather?", listOf(probe)).getOrThrow()
+        val result = backend.run("Weather?", listOf(weather), mocks).getOrThrow()
 
         assertEquals(
             listOf(TurnToolCall("get_weather", mapOf("city" to "Madrid"), """{"tempC": 21}""")),
@@ -74,8 +75,10 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `run handles several tool calls in one round`() = runTest {
-        val location = probe("get_location", mock = """{"city": "Madrid"}""")
-        val weather = probe("get_weather", mock = """{"tempC": 21}""")
+        val location = tool("get_location")
+        val weather = tool("get_weather")
+        val mocks =
+            mapOf("get_location" to """{"city": "Madrid"}""", "get_weather" to """{"tempC": 21}""")
         val chat =
             ScriptedChat(
                 listOf(
@@ -91,7 +94,7 @@ class CloudPlaygroundBackendTest {
             )
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("Weather here?", listOf(location, weather)).getOrThrow()
+        val result = backend.run("Weather here?", listOf(location, weather), mocks).getOrThrow()
 
         assertEquals(listOf("get_location", "get_weather"), result.toolCalls.map { it.name })
         assertEquals(2, chat.sentResponses.single().size)
@@ -100,8 +103,10 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `run keeps looping while the model chains tool calls`() = runTest {
-        val location = probe("get_location", mock = """{"city": "Madrid"}""")
-        val weather = probe("get_weather", mock = """{"tempC": 21}""")
+        val location = tool("get_location")
+        val weather = tool("get_weather")
+        val mocks =
+            mapOf("get_location" to """{"city": "Madrid"}""", "get_weather" to """{"tempC": 21}""")
         val chat =
             ScriptedChat(
                 listOf(
@@ -112,7 +117,7 @@ class CloudPlaygroundBackendTest {
             )
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("Weather here?", listOf(location, weather)).getOrThrow()
+        val result = backend.run("Weather here?", listOf(location, weather), mocks).getOrThrow()
 
         assertEquals(listOf("get_location", "get_weather"), result.toolCalls.map { it.name })
         assertEquals("21 degrees in Madrid.", result.text)
@@ -121,7 +126,8 @@ class CloudPlaygroundBackendTest {
     @Test
     fun `run fails loudly instead of truncating when the model will not stop calling tools`() =
         runTest {
-            val probe = probe("get_weather", mock = """{"tempC": 21}""")
+            val weather = tool("get_weather")
+            val mocks = mapOf("get_weather" to """{"tempC": 21}""")
             val forever =
                 List(20) { CloudReply("", listOf(CloudFunctionCall("get_weather", emptyMap()))) }
             val backend =
@@ -130,7 +136,7 @@ class CloudPlaygroundBackendTest {
                     maxToolRounds = 3,
                 )
 
-            val error = backend.run("Weather?", listOf(probe)).exceptionOrNull()
+            val error = backend.run("Weather?", listOf(weather), mocks).exceptionOrNull()
 
             assertTrue(error is IllegalStateException)
             assertTrue(error.message.orEmpty().contains("3 rounds"))
@@ -147,7 +153,7 @@ class CloudPlaygroundBackendTest {
             )
         val backend = CloudPlaygroundBackend(CloudChatFactory { chat })
 
-        val result = backend.run("Email someone", emptyList()).getOrThrow()
+        val result = backend.run("Email someone", emptyList(), emptyMap()).getOrThrow()
 
         // The turn survives, and the Trace still shows the model reaching for a tool it never had.
         assertEquals("send_email", result.toolCalls.single().name)
@@ -157,7 +163,8 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `run reuses the session across turns so follow-ups keep their history`() = runTest {
-        val probe = probe("get_weather", mock = """{"tempC": 21}""")
+        val weather = tool("get_weather")
+        val mocks = mapOf("get_weather" to """{"tempC": 21}""")
         var opened = 0
         val chat = ScriptedChat(List(4) { CloudReply("ok", emptyList()) })
         val backend =
@@ -168,17 +175,17 @@ class CloudPlaygroundBackendTest {
                 }
             )
 
-        backend.run("first", listOf(probe)).getOrThrow()
-        backend.run("second", listOf(probe)).getOrThrow()
+        backend.run("first", listOf(weather), mocks).getOrThrow()
+        backend.run("second", listOf(weather), mocks).getOrThrow()
 
         assertEquals(1, opened)
     }
 
     @Test
-    fun `run opens a fresh session when the probe set changes`() = runTest {
-        // Tools are bound when the session opens, so a changed Probe set needs a new one.
-        val first = probe("get_weather", mock = "{}")
-        val second = probe("get_location", mock = "{}")
+    fun `run opens a fresh session when the tool set changes`() = runTest {
+        // Tools are bound when the session opens, so a changed tool set needs a new one.
+        val first = tool("get_weather")
+        val second = tool("get_location")
         val sessions = mutableListOf<ScriptedChat>()
         val backend =
             CloudPlaygroundBackend(
@@ -187,8 +194,8 @@ class CloudPlaygroundBackendTest {
                 }
             )
 
-        backend.run("first", listOf(first)).getOrThrow()
-        backend.run("second", listOf(first, second)).getOrThrow()
+        backend.run("first", listOf(first), emptyMap()).getOrThrow()
+        backend.run("second", listOf(first, second), emptyMap()).getOrThrow()
 
         assertEquals(2, sessions.size)
         assertNotSame(sessions[0], sessions[1])
@@ -210,14 +217,14 @@ class CloudPlaygroundBackendTest {
                 }
             )
 
-        val error = backend.run("hi", emptyList()).exceptionOrNull()
+        val error = backend.run("hi", emptyList(), emptyMap()).exceptionOrNull()
 
         assertEquals("network down", error?.message)
     }
 
     @Test
     fun `close drops the session so the next turn starts a new one`() = runTest {
-        val probe = probe("get_weather", mock = "{}")
+        val weather = tool("get_weather")
         val sessions = mutableListOf<ScriptedChat>()
         val backend =
             CloudPlaygroundBackend(
@@ -226,9 +233,9 @@ class CloudPlaygroundBackendTest {
                 }
             )
 
-        backend.run("first", listOf(probe)).getOrThrow()
+        backend.run("first", listOf(weather), emptyMap()).getOrThrow()
         backend.close()
-        backend.run("second", listOf(probe)).getOrThrow()
+        backend.run("second", listOf(weather), emptyMap()).getOrThrow()
 
         assertEquals(2, sessions.size)
     }
@@ -241,8 +248,8 @@ class CloudPlaygroundBackendTest {
     }
 
     @Test
-    fun `run reuses the session when the same probes are passed as an equal list`() = runTest {
-        val probe = probe("get_weather", mock = "{}")
+    fun `run reuses the session when the same tools are passed as an equal list`() = runTest {
+        val weather = tool("get_weather")
         val sessions = mutableListOf<ScriptedChat>()
         val backend =
             CloudPlaygroundBackend(
@@ -251,8 +258,8 @@ class CloudPlaygroundBackendTest {
                 }
             )
 
-        backend.run("first", listOf(probe)).getOrThrow()
-        backend.run("second", listOf(probe.copy())).getOrThrow()
+        backend.run("first", listOf(weather), emptyMap()).getOrThrow()
+        backend.run("second", listOf(weather.copy()), emptyMap()).getOrThrow()
 
         assertEquals(1, sessions.size)
         assertSame(sessions[0], sessions[0])
@@ -275,16 +282,12 @@ private class ScriptedChat(replies: List<CloudReply>) : CloudChatSession {
         remaining.removeFirstOrNull() ?: error("ScriptedChat ran out of replies")
 }
 
-private fun probe(name: String, mock: String): Probe =
-    Probe(
-        toolSpec =
-            ToolSpecification(
-                function =
-                    FunctionSpec(
-                        name = name,
-                        description = "test probe",
-                        parameters = JsonObject(emptyMap()),
-                    )
-            ),
-        mockResponse = mock,
+private fun tool(name: String): ToolSpecification =
+    ToolSpecification(
+        function =
+            FunctionSpec(
+                name = name,
+                description = "test tool",
+                parameters = JsonObject(emptyMap()),
+            )
     )

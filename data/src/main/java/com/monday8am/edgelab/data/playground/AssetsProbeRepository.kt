@@ -2,6 +2,7 @@ package com.monday8am.edgelab.data.playground
 
 import co.touchlab.kermit.Logger
 import com.monday8am.edgelab.data.testing.TestSuiteDefinition
+import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -11,13 +12,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Bundled preset Probe library, seeded from `tool_tests.json`.
+ * Bundled preset tool library, seeded from `tool_tests.json`.
  *
- * For each test case that defines tools with matching mock responses, one Probe is produced per
- * tool. Probes are deduplicated by tool name (first definition wins), so the library is a flat,
- * unique set of presets for 1-tap add.
+ * For each test case that defines tools with matching mock responses, one tool definition is
+ * produced per tool. Tools are deduplicated by name (first definition wins), so the library is a
+ * flat, unique set of presets for 1-tap add.
  *
- * Tools without a corresponding mock entry are skipped — a Probe is meaningless without a response
+ * Tools without a corresponding mock entry are skipped — a preset is meaningless without a response
  * for the model to integrate.
  */
 class AssetsProbeRepository(
@@ -31,40 +32,51 @@ class AssetsProbeRepository(
         isLenient = true
     }
 
-    override fun getProbesAsFlow(): Flow<List<Probe>> =
-        flow { emit(loadProbes()) }
+    override fun getToolsAsFlow(): Flow<List<ToolSpecification>> =
+        flow { emit(loadLibrary().tools) }
             .catch { e ->
                 if (e is CancellationException) throw e
-                logger.e(e) { "Failed to load preset probes" }
+                logger.e(e) { "Failed to load preset tools" }
                 emit(emptyList())
             }
 
-    private fun loadProbes(): List<Probe> {
+    override fun getMockResponsesAsFlow(): Flow<Map<String, String>> =
+        flow { emit(loadLibrary().mockResponses) }
+            .catch { e ->
+                if (e is CancellationException) throw e
+                logger.e(e) { "Failed to load preset mock responses" }
+                emit(emptyMap())
+            }
+
+    private fun loadLibrary(): PresetLibrary {
         val resource =
             this::class.java.classLoader?.getResource(resourcePath)?.readText()
                 ?: run {
                     logger.w { "tool_tests.json not found at $resourcePath" }
-                    return emptyList()
+                    return PresetLibrary(emptyList(), emptyMap())
                 }
 
         val tests = json.decodeFromString<TestSuiteDefinition>(resource).tests
         val seen = mutableSetOf<String>()
-        val probes = mutableListOf<Probe>()
+        val tools = mutableListOf<ToolSpecification>()
+        val mocks = mutableMapOf<String, String>()
 
         for (test in tests) {
-            val mocks = test.mockToolResponses ?: emptyMap()
+            val testMocks = test.mockToolResponses ?: emptyMap()
             for (tool in test.tools.orEmpty()) {
-                val mock = mocks[tool.function.name] ?: continue
+                val name = tool.function.name
+                val mock = testMocks[name] ?: continue
                 val mockString = mockToString(mock) ?: continue
-                if (tool.function.name !in seen) {
-                    seen += tool.function.name
-                    probes += Probe(toolSpec = tool, mockResponse = mockString)
+                if (name !in seen) {
+                    seen += name
+                    tools += tool
+                    mocks[name] = mockString
                 }
             }
         }
 
-        logger.i { "Loaded ${probes.size} preset probes: ${probes.map { it.name }}" }
-        return probes
+        logger.i { "Loaded ${tools.size} preset tools: ${tools.map { it.function.name }}" }
+        return PresetLibrary(tools, mocks)
     }
 
     private fun mockToString(element: JsonElement): String? =
@@ -72,4 +84,9 @@ class AssetsProbeRepository(
             is JsonPrimitive -> element.content
             else -> element.toString()
         }
+
+    private data class PresetLibrary(
+        val tools: List<ToolSpecification>,
+        val mockResponses: Map<String, String>,
+    )
 }

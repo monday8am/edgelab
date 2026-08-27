@@ -4,7 +4,6 @@ import com.monday8am.edgelab.agent.core.LocalInferenceEngine
 import com.monday8am.edgelab.agent.tools.OpenApiToolHandler
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.testing.FunctionSpec
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlin.test.Test
@@ -23,7 +22,10 @@ class LocalPlaygroundBackendTest {
         val runner = LocalPlaygroundBackend(engine, TEST_MODEL, "/fake/model.litertlm")
 
         runner.initialize()
-        val result = runner.run("Where am I?", listOf(probe("get_location"))).getOrThrow()
+        val result =
+            runner
+                .run("Where am I?", listOf(tool("get_location")), mapOf("get_location" to "{}"))
+                .getOrThrow()
 
         assertEquals("You are at 40.4, -3.7.", result.text)
         assertEquals(1, engine.setToolsCallCount)
@@ -34,16 +36,18 @@ class LocalPlaygroundBackendTest {
         runTest {
             val engine = FakeEngine(simulateToolCallParams = """{"unused":true}""")
             val runner = LocalPlaygroundBackend(engine, TEST_MODEL, "/fake/model.litertlm")
-            val locationProbe =
-                probe("get_location", mock = "{\"latitude\":40.4,\"longitude\":-3.7}")
+            val mock = "{\"latitude\":40.4,\"longitude\":-3.7}"
 
             runner.initialize()
-            val result = runner.run("Where am I?", listOf(locationProbe)).getOrThrow()
+            val result =
+                runner
+                    .run("Where am I?", listOf(tool("get_location")), mapOf("get_location" to mock))
+                    .getOrThrow()
 
             assertEquals(1, result.toolCalls.size)
             val call = result.toolCalls.first()
             assertEquals("get_location", call.name)
-            assertEquals(locationProbe.mockResponse, call.mockResponse)
+            assertEquals(mock, call.mockResponse)
             assertEquals("unused", call.args.keys.first())
         }
 
@@ -53,7 +57,7 @@ class LocalPlaygroundBackendTest {
         val runner = LocalPlaygroundBackend(engine, TEST_MODEL, "/fake/model.litertlm")
 
         runner.initialize()
-        val result = runner.run("Hello", emptyList()).getOrThrow()
+        val result = runner.run("Hello", emptyList(), emptyMap()).getOrThrow()
 
         assertEquals("You are at 40.4, -3.7.", result.text)
         assertTrue(result.toolCalls.isEmpty())
@@ -64,15 +68,18 @@ class LocalPlaygroundBackendTest {
     fun `run should report multiple tool calls when the model invokes a probe twice`() = runTest {
         val engine = FakeEngine(simulateToolCallParams = """{"x":1}""", callEachToolTimes = 2)
         val runner = LocalPlaygroundBackend(engine, TEST_MODEL, "/fake/model.litertlm")
-        val weatherProbe = probe("get_weather", mock = "{\"temp\":22}")
+        val mock = "{\"temp\":22}"
 
         runner.initialize()
-        val result = runner.run("Weather twice?", listOf(weatherProbe)).getOrThrow()
+        val result =
+            runner
+                .run("Weather twice?", listOf(tool("get_weather")), mapOf("get_weather" to mock))
+                .getOrThrow()
 
         assertEquals(2, result.toolCalls.size)
         result.toolCalls.forEach { call ->
             assertEquals("get_weather", call.name)
-            assertEquals("{\"temp\":22}", call.mockResponse)
+            assertEquals(mock, call.mockResponse)
         }
     }
 
@@ -93,23 +100,19 @@ class LocalPlaygroundBackendTest {
         val runner = LocalPlaygroundBackend(engine, TEST_MODEL, "/fake/model.litertlm")
 
         runner.initialize()
-        val result = runner.run("Hi", emptyList())
+        val result = runner.run("Hi", emptyList(), emptyMap())
 
         assertTrue(result.isFailure)
     }
 
-    private fun probe(name: String, mock: String = "{\"ok\":true}"): Probe =
-        Probe(
-            toolSpec =
-                ToolSpecification(
-                    function =
-                        FunctionSpec(
-                            name = name,
-                            description = "test probe $name",
-                            parameters = JsonObject(emptyMap()),
-                        )
-                ),
-            mockResponse = mock,
+    private fun tool(name: String): ToolSpecification =
+        ToolSpecification(
+            function =
+                FunctionSpec(
+                    name = name,
+                    description = "test tool $name",
+                    parameters = JsonObject(emptyMap()),
+                )
         )
 
     private val TEST_MODEL: ModelConfiguration = ModelCatalog.GEMMA3_1B

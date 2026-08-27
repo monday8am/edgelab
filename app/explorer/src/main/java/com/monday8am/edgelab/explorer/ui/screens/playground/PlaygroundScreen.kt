@@ -38,7 +38,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.testing.FunctionSpec
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import com.monday8am.edgelab.explorer.di.ServiceLocator
@@ -189,10 +188,10 @@ private fun ModelHeader(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ProbeLibrary(
-    availableProbes: ImmutableList<Probe>,
-    activeProbes: ImmutableList<Probe>,
-    onAddProbe: (Probe) -> Unit,
-    onRemoveProbe: (Probe) -> Unit,
+    availableProbes: ImmutableList<ToolSpecification>,
+    activeProbes: ImmutableList<ToolSpecification>,
+    onAddProbe: (ToolSpecification) -> Unit,
+    onRemoveProbe: (ToolSpecification) -> Unit,
 ) {
     if (availableProbes.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -203,19 +202,21 @@ private fun ProbeLibrary(
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             availableProbes.forEach { probe ->
-                val isActive = activeProbes.any { it.id == probe.id }
+                val isActive =
+                    activeProbes.any { it.function.name == probe.function.name }
                 InputChip(
                     selected = isActive,
                     onClick = {
                         if (isActive) onRemoveProbe(probe) else onAddProbe(probe)
                     },
-                    label = { Text(probe.name) },
+                    label = { Text(probe.function.name) },
                 )
             }
         }
         if (activeProbes.isNotEmpty()) {
             Text(
-                text = "Active: ${activeProbes.joinToString(", ") { it.name }}",
+                text =
+                    "Active: ${activeProbes.joinToString(", ") { it.function.name }}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -409,17 +410,13 @@ private fun PlaygroundPreviewEmpty() {
 private fun PlaygroundPreviewWithTrace() {
     val model: ModelConfiguration = ModelCatalog.GEMMA3_1B
     val probe =
-        Probe(
-            toolSpec =
-                ToolSpecification(
-                    function =
-                        FunctionSpec(
-                            name = "get_location",
-                            description = "Get the user's location",
-                            parameters = JsonObject(emptyMap()),
-                        ),
+        ToolSpecification(
+            function =
+                FunctionSpec(
+                    name = "get_location",
+                    description = "Get the user's location",
+                    parameters = JsonObject(emptyMap()),
                 ),
-            mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
         )
     val trace = persistentListOf(
         TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),

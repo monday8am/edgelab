@@ -7,7 +7,6 @@ import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.model.ModelRepository
 import com.monday8am.edgelab.data.model.RepositoryState
-import com.monday8am.edgelab.data.playground.Probe
 import com.monday8am.edgelab.data.playground.ProbeRepository
 import com.monday8am.edgelab.data.testing.FunctionSpec
 import com.monday8am.edgelab.data.testing.ToolSpecification
@@ -35,8 +34,12 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
     var closeCallCount = 0
         private set
 
-    /** Probes handed to the most recent [run]. */
-    var lastProbes: List<Probe> = emptyList()
+    /** Tools handed to the most recent [run]. */
+    var lastTools: List<ToolSpecification> = emptyList()
+        private set
+
+    /** Mock responses handed to the most recent [run]. */
+    var lastMockResponses: Map<String, String> = emptyMap()
         private set
 
     var text: String = "Sure — here is the answer."
@@ -50,9 +53,14 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
         else Result.success(Unit)
     }
 
-    override suspend fun run(prompt: String, probes: List<Probe>): Result<TurnResult> {
+    override suspend fun run(
+        prompt: String,
+        tools: List<ToolSpecification>,
+        mockResponses: Map<String, String>,
+    ): Result<TurnResult> {
         runCallCount++
-        lastProbes = probes
+        lastTools = tools
+        lastMockResponses = mockResponses
         return if (runShouldFail) Result.failure(RuntimeException("prompt boom"))
         else Result.success(TurnResult(text = text, toolCalls = toolCalls))
     }
@@ -76,13 +84,20 @@ internal class RecordingBackendFactory(
     fun backend(): FakePlaygroundBackend = backend
 }
 
-internal class FakeProbeRepository(initialProbes: List<Probe> = emptyList()) : ProbeRepository {
-    private val flow = MutableStateFlow(initialProbes)
+internal class FakeProbeRepository(
+    initialTools: List<ToolSpecification> = emptyList(),
+    initialMockResponses: Map<String, String> = emptyMap(),
+) : ProbeRepository {
+    private val toolsFlow = MutableStateFlow(initialTools)
+    private val mocksFlow = MutableStateFlow(initialMockResponses)
 
-    override fun getProbesAsFlow(): Flow<List<Probe>> = flow
+    override fun getToolsAsFlow(): Flow<List<ToolSpecification>> = toolsFlow
 
-    fun setProbes(probes: List<Probe>) {
-        flow.value = probes
+    override fun getMockResponsesAsFlow(): Flow<Map<String, String>> = mocksFlow
+
+    fun setProbes(tools: List<ToolSpecification>, mockResponses: Map<String, String>) {
+        toolsFlow.value = tools
+        mocksFlow.value = mockResponses
     }
 }
 
@@ -137,23 +152,17 @@ internal class FakeModelDownloadManagerForPlayground(
     override fun dispose() {}
 }
 
-/** Test helper: builds a [Probe] with the given name/description and an empty object schema. */
-internal fun testProbe(
-    name: String,
-    description: String = "test probe",
-    mockResponse: String = "{\"ok\":true}",
-): Probe =
-    Probe(
-        toolSpec =
-            ToolSpecification(
-                function =
-                    FunctionSpec(
-                        name = name,
-                        description = description,
-                        parameters = JsonObject(emptyMap()),
-                    )
-            ),
-        mockResponse = mockResponse,
+/**
+ * Test helper: builds a [ToolSpecification] with the given name/description and an empty schema.
+ */
+internal fun testTool(name: String, description: String = "test probe"): ToolSpecification =
+    ToolSpecification(
+        function =
+            FunctionSpec(
+                name = name,
+                description = description,
+                parameters = JsonObject(emptyMap()),
+            )
     )
 
 internal val TEST_MODEL: ModelConfiguration = ModelCatalog.GEMMA3_1B
