@@ -60,7 +60,7 @@ Correcting a premise this plan was written on: Firebase was **not** already a de
 
 - [x] Cloud Playground (Gemini Flash via Firebase AI Logic) as the primary nav entry — default target, zero download
 - [x] Preset Probe library, seeded from `data/.../tool_tests.json` (1-tap add) — *tweak-after-add still missing*
-- [ ] Send prompt → annotated Trace — transcript + tool-call cards done; **`[used/ignored tool output]` tags not built**
+- [x] Send prompt → annotated Trace — transcript + tool-call cards + `[used/ignored tool output]` tags (heuristic judge in `ToolOutputUsage`)
 - [x] Firebase surface for the Gemini proxy — resolved to the `firebase-ai` SDK (see Onboarding above); needs `google-services.json` to run
 
 **Out of scope for v1**: local-model download, paste-import, Benchmark, Test-Suite reskin.
