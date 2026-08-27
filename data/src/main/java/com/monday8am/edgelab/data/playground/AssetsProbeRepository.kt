@@ -12,14 +12,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * Bundled preset tool library, seeded from `tool_tests.json`.
- *
- * For each test case that defines tools with matching mock responses, one tool definition is
- * produced per tool. Tools are deduplicated by name (first definition wins), so the library is a
- * flat, unique set of presets for 1-tap add.
- *
- * Tools without a corresponding mock entry are skipped — a preset is meaningless without a response
- * for the model to integrate.
+ * Bundled preset tool library, seeded from `tool_tests.json`. Tools are deduplicated by name (first
+ * definition wins); tools without a matching mock entry are skipped — a preset is meaningless
+ * without a response for the model to integrate.
  */
 class AssetsProbeRepository(
     private val resourcePath: String = "com/monday8am/edgelab/data/testing/tool_tests.json"

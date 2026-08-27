@@ -18,11 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Fake [PlaygroundBackend] for the Playground ViewModel tests — stands in for both the cloud and
- * local legs, since the ViewModel only ever sees this interface.
- *
- * The real backends' behaviour is covered in `:agent`: the cloud tool loop in
- * `CloudPlaygroundBackendTest`, litert-lm handler recording in `LocalPlaygroundBackendTest`.
+ * Stands in for both legs; real behaviour is covered in `:agent` (cloud loop, litert-lm recording).
  */
 internal class FakePlaygroundBackend : PlaygroundBackend {
     var initializeCallCount = 0
@@ -152,9 +148,6 @@ internal class FakeModelDownloadManagerForPlayground(
     override fun dispose() {}
 }
 
-/**
- * Test helper: builds a [ToolSpecification] with the given name/description and an empty schema.
- */
 internal fun testTool(name: String, description: String = "test probe"): ToolSpecification =
     ToolSpecification(
         function =

@@ -31,40 +31,29 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** One node in the Playground Trace — the annotated transcript of a single turn. */
 sealed interface TraceEntry {
     val id: String
 
-    /** The dev's prompt that started this turn. */
     data class UserPrompt(override val id: String, val text: String) : TraceEntry
 
-    /** The model's final natural-language text for the turn. */
     data class ModelText(override val id: String, val text: String) : TraceEntry
 
-    /** A tool the model invoked, with its arguments pretty-printed as name/value pairs. */
     data class ToolCallCard(
         override val id: String,
         val toolName: String,
         val args: ImmutableList<ArgValue>,
     ) : TraceEntry
 
-    /** The mock response returned to the model for a tool call. */
     data class ToolOutput(override val id: String, val toolName: String, val mockResponse: String) :
         TraceEntry
 
-    /** A failure surfaced during the turn (engine not ready, inference error, etc). */
     data class Error(override val id: String, val message: String) : TraceEntry
 }
 
-/** A tool-call argument pretty-printed as a name/value pair for the Trace card. */
 data class ArgValue(val name: String, val value: String)
 
 /**
- * Which model answers the dev's prompts.
- *
- * v1 defaults to [Cloud] so a dev reaches the Playground with zero download and learns the game
- * immediately; [Local] is the on-device leg they switch to once they have a `.litertlm` (plan.md
- * "Onboarding", ADR-0003).
+ * v1 defaults to [Cloud] — zero download before the first prompt; [Local] once a `.litertlm` lands.
  */
 sealed interface PlaygroundTarget {
     data object Cloud : PlaygroundTarget
@@ -72,9 +61,7 @@ sealed interface PlaygroundTarget {
     data class Local(val model: ModelConfiguration) : PlaygroundTarget
 }
 
-/**
- * Builds the backend for a [PlaygroundTarget]. Implemented in `:core`, which owns both providers.
- */
+/** Implemented in `:core`, which owns both providers. */
 fun interface PlaygroundBackendFactory {
     fun create(target: PlaygroundTarget): PlaygroundBackend
 }
@@ -128,7 +115,6 @@ class PlaygroundViewModelImpl(
     /** Trace ids are minted from coroutines that may resume off the main thread. */
     private val traceIdCounter = AtomicInteger(1)
 
-    /** Cached backend for the current target; rebuilt when the dev switches. */
     @Volatile private var currentBackend: PlaygroundBackend? = null
     @Volatile private var currentTarget: PlaygroundTarget? = null
 
@@ -146,7 +132,6 @@ class PlaygroundViewModelImpl(
     private val availableProbes: StateFlow<List<ToolSpecification>> =
         probeRepository.getToolsAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    /** Mock response for each preset tool, keyed by tool name — handed to the backend on run. */
     private val mockResponses: StateFlow<Map<String, String>> =
         probeRepository.getMockResponsesAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
@@ -258,7 +243,6 @@ class PlaygroundViewModelImpl(
         }
     }
 
-    /** Lazily builds (and caches) the backend for [target], rebuilding when the dev switches. */
     private fun backendFor(target: PlaygroundTarget): PlaygroundBackend {
         val existing = currentBackend
         if (existing != null && target == currentTarget) return existing

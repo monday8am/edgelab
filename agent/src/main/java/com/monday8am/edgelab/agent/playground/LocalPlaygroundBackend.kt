@@ -8,17 +8,12 @@ import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.coroutines.CancellationException
 
 /**
- * The on-device Playground backend, running a `.litertlm` model through [LocalInferenceEngine].
+ * The on-device Playground backend. litert-lm invokes the tool handler in-process, so there is no
+ * explicit tool loop here — the mock responses come back already recorded on the handlers. This is
+ * also the boundary that keeps `OpenApiToolHandler` (a `litertlm.OpenApiTool`) out of
+ * `:presentation`.
  *
- * litert-lm invokes the tool handler in-process, so there is no explicit tool loop here — the mock
- * responses come back already recorded on the handlers. (Contrast [CloudPlaygroundBackend], which
- * has to drive that loop itself.)
- *
- * This is also the boundary that keeps `OpenApiToolHandler` — which extends `litertlm.OpenApiTool`
- * — out of `:presentation`. Callers see only [TurnResult].
- *
- * Single-turn in v1a: each [run] resets the conversation and registers tools afresh. The model is
- * loaded once via [initialize]; later turns reuse the loaded weights.
+ * Single-turn in v1a: each [run] resets the conversation and registers tools afresh.
  */
 class LocalPlaygroundBackend(
     private val engine: LocalInferenceEngine,
@@ -29,7 +24,6 @@ class LocalPlaygroundBackend(
 
     @Volatile private var initialized = false
 
-    /** Loads the model. Idempotent — safe to call before each turn. */
     override suspend fun initialize(): Result<Unit> {
         if (initialized) return Result.success(Unit)
         return engine
@@ -71,7 +65,6 @@ class LocalPlaygroundBackend(
         }
     }
 
-    /** Releases the underlying inference session. */
     override fun close() {
         engine.closeSession()
         initialized = false

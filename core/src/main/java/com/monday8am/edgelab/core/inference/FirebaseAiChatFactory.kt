@@ -28,11 +28,9 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
 /**
- * Reaches Gemini through Firebase AI Logic, which holds the API key server-side — the app ships no
- * key and the dev supplies none (plan.md "Cloud leg", ADR-0002).
- *
- * Requires the consuming app to provide a `google-services.json` and apply the
- * `com.google.gms.google-services` plugin; without it [open] throws at first use.
+ * Reaches Gemini through Firebase AI Logic, which holds the API key server-side. Requires the
+ * consuming app to provide a `google-services.json` and apply the `com.google.gms.google-services`
+ * plugin; without it [open] throws at first use.
  */
 class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL) :
     CloudChatFactory {
@@ -95,7 +93,6 @@ private fun String.asJsonObject(): JsonObject =
     runCatching { kotlinx.serialization.json.Json.parseToJsonElement(this).jsonObject }
         .getOrElse { buildJsonObject { put("result", this@asJsonObject) } }
 
-/** Flattens a JSON value into the plain Kotlin the Trace displays. */
 private fun kotlinx.serialization.json.JsonElement.unwrap(): Any? =
     when (this) {
         is JsonPrimitive ->

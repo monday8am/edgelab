@@ -183,7 +183,6 @@ class CloudPlaygroundBackendTest {
 
     @Test
     fun `run opens a fresh session when the tool set changes`() = runTest {
-        // Tools are bound when the session opens, so a changed tool set needs a new one.
         val first = tool("get_weather")
         val second = tool("get_location")
         val sessions = mutableListOf<ScriptedChat>()

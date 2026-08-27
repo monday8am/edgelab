@@ -5,14 +5,10 @@ import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.coroutines.CancellationException
 
 /**
- * The cloud Playground backend — the onboarding leg that lets a dev run their first prompts with
- * zero download (ADR-0002, ADR-0003).
- *
- * Unlike the local backend, where litert-lm invokes the tool handler in-process, a cloud model only
- * *asks* for a call and waits. So this class owns the tool loop explicitly: send prompt → read
- * `functionCall`s → hand back each tool's mock output → read what the model says next, repeating
- * while the model keeps calling tools. That loop is the whole reason this class exists, and it is
- * why the provider adapter is kept behind [CloudChatSession] — so the loop is testable with a fake.
+ * The cloud Playground backend. Unlike the local backend, where litert-lm invokes the tool handler
+ * in-process, a cloud model only *asks* for a call and waits — so this class owns the tool loop
+ * explicitly: send prompt → read `functionCall`s → hand back each tool's mock output → repeat while
+ * the model keeps calling tools.
  */
 class CloudPlaygroundBackend(
     private val chatFactory: CloudChatFactory,
@@ -26,7 +22,6 @@ class CloudPlaygroundBackend(
     /** The tool set the live [session] was opened with; a change forces a fresh session. */
     private var sessionTools: List<ToolSpecification> = emptyList()
 
-    /** Nothing to load — the model lives on the server. Kept for [PlaygroundBackend] symmetry. */
     override suspend fun initialize(): Result<Unit> = Result.success(Unit)
 
     override suspend fun run(
