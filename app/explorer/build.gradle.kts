@@ -8,13 +8,12 @@ plugins {
     alias(libs.plugins.firebase.crashlytics) apply false
 }
 
-// Cloud Playground: google-services.json is gitignored (it stays out of the public repo), so
-// apply the plugin only when the config file is present. Without it the app still builds and
-// the on-device target works; the Cloud target fails with a setup message at first use.
-// When adding Firebase config: drop google-services.json into this directory and enable
-// Crashlytics by removing the `apply false` above and applying it the same way.
+// google-services.json is gitignored (public repo), so the plugin applies only when the config
+// is present — contributor builds work without it. Drop the real file into app/explorer/ to
+// enable the Cloud Playground; no gradle edits needed. The plugins block cannot host the
+// condition (it forbids arbitrary expressions), hence pluginManager.apply here.
 if (file("google-services.json").exists()) {
-    apply(plugin = libs.plugins.google.services.get().pluginId)
+    pluginManager.apply(libs.plugins.google.services.get().pluginId)
 }
 
 // Load upload keystore properties from file or environment variables
