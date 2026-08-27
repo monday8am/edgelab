@@ -2,6 +2,7 @@ package com.monday8am.edgelab.presentation.playground
 
 import co.touchlab.kermit.Logger
 import com.monday8am.edgelab.agent.playground.PlaygroundBackend
+import com.monday8am.edgelab.agent.playground.ToolOutputUsage
 import com.monday8am.edgelab.agent.playground.TurnResult
 import com.monday8am.edgelab.agent.playground.TurnToolCall
 import com.monday8am.edgelab.data.model.ModelConfiguration
@@ -36,7 +37,12 @@ sealed interface TraceEntry {
 
     data class UserPrompt(override val id: String, val text: String) : TraceEntry
 
-    data class ModelText(override val id: String, val text: String) : TraceEntry
+    /** [usedToolOutput] is null when no tool was called. */
+    data class ModelText(
+        override val id: String,
+        val text: String,
+        val usedToolOutput: Boolean? = null,
+    ) : TraceEntry
 
     data class ToolCallCard(
         override val id: String,
@@ -267,7 +273,11 @@ class PlaygroundViewModelImpl(
                     mockResponse = call.mockResponse,
                 )
         }
-        entries += TraceEntry.ModelText(id = nextTraceId(), text = text)
+        val usedToolOutput =
+            if (toolCalls.isEmpty()) null
+            else toolCalls.any { ToolOutputUsage.isUsed(it.mockResponse, text) }
+        entries +=
+            TraceEntry.ModelText(id = nextTraceId(), text = text, usedToolOutput = usedToolOutput)
         return entries
     }
 

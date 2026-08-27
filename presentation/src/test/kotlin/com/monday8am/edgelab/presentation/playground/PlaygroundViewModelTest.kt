@@ -1,5 +1,6 @@
 package com.monday8am.edgelab.presentation.playground
 
+import com.monday8am.edgelab.agent.playground.TurnToolCall
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -222,6 +223,7 @@ class PlaygroundViewModelTest {
         assertEquals("Where am I?", (trace[0] as TraceEntry.UserPrompt).text)
         assertTrue(trace[1] is TraceEntry.ModelText)
         assertEquals("You are in Siena.", (trace[1] as TraceEntry.ModelText).text)
+        assertEquals(null, (trace[1] as TraceEntry.ModelText).usedToolOutput)
         // The prompt field is cleared after sending.
         assertEquals("", viewModel.uiState.value.prompt)
         assertFalse(viewModel.uiState.value.isRunning)
@@ -278,6 +280,44 @@ class PlaygroundViewModelTest {
             backendFactory.requestedTargets,
         )
         assertEquals(2, backend.runCallCount)
+        viewModel.dispose()
+    }
+
+    // endregion
+
+    // region Used/ignored tool output Tests
+
+    @Test
+    fun `RunPrompt should tag model text as used when it integrates the mock output`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Weather?"))
+        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+        backend.text = "It's 21 degrees in Madrid."
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        advanceUntilIdle()
+
+        val modelText =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(true, modelText.usedToolOutput)
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `RunPrompt should tag model text as ignored when it ignores the mock output`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Weather?"))
+        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+        backend.text = "I cannot check the weather right now."
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        advanceUntilIdle()
+
+        val modelText =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(false, modelText.usedToolOutput)
         viewModel.dispose()
     }
 

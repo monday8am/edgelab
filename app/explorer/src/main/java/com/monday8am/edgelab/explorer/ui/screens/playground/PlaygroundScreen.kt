@@ -273,12 +273,19 @@ private fun TraceEntryRow(entry: TraceEntry) {
                 text = entry.text,
                 container = MaterialTheme.colorScheme.primaryContainer,
             )
-        is TraceEntry.ModelText ->
+        is TraceEntry.ModelText -> {
+            val used = entry.usedToolOutput
             TraceBubble(
                 label = "Model",
                 text = entry.text,
                 container = MaterialTheme.colorScheme.secondaryContainer,
+                tag =
+                    used?.let { if (it) "[used tool output]" else "[ignored tool output]" },
+                tagColor =
+                    if (used == true) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.error,
             )
+        }
         is TraceEntry.ToolCallCard -> ToolCallCardRow(entry)
         is TraceEntry.ToolOutput -> ToolOutputRow(entry)
         is TraceEntry.Error ->
@@ -296,6 +303,8 @@ private fun TraceBubble(
     label: String,
     text: String,
     container: androidx.compose.ui.graphics.Color,
+    tag: String? = null,
+    tagColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = container)) {
         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
@@ -304,6 +313,14 @@ private fun TraceBubble(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (tag != null) {
+                Text(
+                    text = tag,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tagColor,
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(text, style = MaterialTheme.typography.bodyMedium)
         }
@@ -433,7 +450,11 @@ private fun PlaygroundPreviewWithTrace() {
             toolName = "get_location",
             mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
         ),
-        TraceEntry.ModelText(id = "t4", text = "You are in Madrid at 40.42, -3.70."),
+        TraceEntry.ModelText(
+            id = "t4",
+            text = "You are in Madrid at 40.42, -3.70.",
+            usedToolOutput = true,
+        ),
     )
     EdgeLabTheme {
         PlaygroundScreenContent(
@@ -448,6 +469,32 @@ private fun PlaygroundPreviewWithTrace() {
                     isRunning = false,
                     error = null,
                 ),
+            onAction = {},
+            onNavigateToModelSelector = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Ignored tool output", widthDp = 380)
+@Composable
+private fun PlaygroundPreviewIgnoredToolOutput() {
+    val trace = persistentListOf(
+        TraceEntry.UserPrompt(id = "t1", text = "What's the weather?"),
+        TraceEntry.ToolCallCard(
+            id = "t2",
+            toolName = "get_weather",
+            args = persistentListOf(ArgValue(name = "city", value = "Madrid")).toImmutableList(),
+        ),
+        TraceEntry.ToolOutput(id = "t3", toolName = "get_weather", mockResponse = "{\"tempC\": 21}"),
+        TraceEntry.ModelText(
+            id = "t4",
+            text = "I cannot check the weather right now.",
+            usedToolOutput = false,
+        ),
+    )
+    EdgeLabTheme {
+        PlaygroundScreenContent(
+            uiState = PlaygroundUiState(trace = trace),
             onAction = {},
             onNavigateToModelSelector = {},
         )
