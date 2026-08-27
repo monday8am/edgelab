@@ -4,12 +4,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    // Firebase plugins - commented out for now (requires google-services.json with edgelab
-    // package).
-    // Uncomment google.services to switch on the Cloud Playground: without it the app builds and
-    // the on-device target works, but the Cloud target fails with a setup message at first use.
-    // alias(libs.plugins.google.services)
-    // alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.crashlytics) apply false
+}
+
+// Cloud Playground: google-services.json is gitignored (it stays out of the public repo), so
+// apply the plugin only when the config file is present. Without it the app still builds and
+// the on-device target works; the Cloud target fails with a setup message at first use.
+// When adding Firebase config: drop google-services.json into this directory and enable
+// Crashlytics by removing the `apply false` above and applying it the same way.
+if (file("google-services.json").exists()) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
 }
 
 // Load upload keystore properties from file or environment variables
