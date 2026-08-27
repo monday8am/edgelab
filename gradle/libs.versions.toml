@@ -62,6 +62,7 @@ tink-android = { group = "com.google.crypto.tink", name = "tink-android", versio
 compose-lint-checks = { group = "com.slack.lint.compose", name = "compose-lint-checks", version.ref = "compose-lint" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
 appauth = { group = "net.openid", name = "appauth", version.ref = "appauth" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }

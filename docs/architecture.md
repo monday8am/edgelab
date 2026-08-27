@@ -70,6 +70,7 @@ Model testing and tool-calling validation platform.
 
 | Screen | ViewModel wrapper | Purpose |
 |--------|------------------|---------|
+| `PlaygroundScreen` | `AndroidPlaygroundViewModel` | Probe tool-calling interactively; start destination. Cloud (Gemini) by default, switchable to a downloaded `.litertlm` |
 | `ModelSelectorScreen` | `AndroidModelSelectorViewModel` | Browse, download, and manage models |
 | `TestScreen` | `AndroidTestViewModel` | Run tool-calling test suites |
 | `TestDetailsScreen` | `AndroidTestDetailsViewModel` | Browse test catalog with domain filtering |

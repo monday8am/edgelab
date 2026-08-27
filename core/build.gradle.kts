@@ -45,6 +45,11 @@ dependencies {
     // Inference
     implementation(libs.litertlm.android)
 
+    // Cloud inference (Playground onboarding leg) — Firebase AI Logic proxies Gemini so the
+    // API key never reaches the client. Needs google-services.json in the consuming app.
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+
     // Download
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)

@@ -25,7 +25,8 @@ Strict unidirectional. No module may depend on a module to its right.
 8. Every new ViewModel requires unit tests. Every new Composable screen requires `@Preview`. See `presentation/AGENTS.md` for specifics.
 9. IMPORTANT: Read `docs/patterns.md` before adding new classes. Read `docs/testing.md` before writing tests.
 10. Always rethrow `CancellationException` — never swallow in catch blocks.
-11. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
+11. Comments explain **why**, never **what**. Delete any comment that restates the code or its names. Keep only non-obvious rationale: design decisions, traps/gotchas, workarounds, and contract invariants (e.g. "idempotent", "must be a JSON object").
+12. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
 
 ## Anti-Patterns
 
@@ -39,6 +40,7 @@ Strict unidirectional. No module may depend on a module to its right.
 | Missing `@Volatile` for cross-thread mutable vars | `@Volatile` or `AtomicReference` |
 | Boolean flags in test fakes (`called = true`) | Int counters (`callCount++`) |
 | `println()` or `android.util.Log` | Kermit `Logger.withTag()` |
+| KDoc that narrates what a class/method does | One-line KDoc only when the *why* or contract is non-obvious |
 
 ## Documentation
 
