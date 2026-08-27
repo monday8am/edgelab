@@ -4,14 +4,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.google.services) apply false
-    alias(libs.plugins.firebase.crashlytics) apply false
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
-// google-services.json is gitignored (public repo), so the plugin applies only when the config
-// is present — contributor builds work without it. Drop the real file into app/explorer/ to
-// enable the Cloud Playground; no gradle edits needed. The plugins block cannot host the
-// condition (it forbids arbitrary expressions), hence pluginManager.apply here.
 if (file("google-services.json").exists()) {
     pluginManager.apply(libs.plugins.google.services.get().pluginId)
 }
@@ -130,8 +126,9 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
 
     // Firebase (commented out for now)
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.crashlytics)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+
     implementation(libs.androidx.compose.ui.text.google.fonts)
 
     lintChecks(libs.compose.lint.checks)
