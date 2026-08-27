@@ -4,12 +4,12 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
-    // Firebase plugins - commented out for now (requires google-services.json with edgelab
-    // package).
-    // Uncomment google.services to switch on the Cloud Playground: without it the app builds and
-    // the on-device target works, but the Cloud target fails with a setup message at first use.
-    // alias(libs.plugins.google.services)
-    // alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.crashlytics)
+}
+
+if (file("google-services.json").exists()) {
+    pluginManager.apply(libs.plugins.google.services.get().pluginId)
 }
 
 // Load upload keystore properties from file or environment variables
@@ -126,8 +126,9 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
 
     // Firebase (commented out for now)
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.crashlytics)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+
     implementation(libs.androidx.compose.ui.text.google.fonts)
 
     lintChecks(libs.compose.lint.checks)
