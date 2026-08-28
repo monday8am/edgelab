@@ -416,7 +416,6 @@ private fun PromptBar(
             value = prompt,
             onValueChange = onPromptChanged,
             label = { Text("Ask the model...") },
-            enabled = !isRunning,
             modifier = Modifier.fillMaxWidth(),
             minLines = 1,
             maxLines = 4,
