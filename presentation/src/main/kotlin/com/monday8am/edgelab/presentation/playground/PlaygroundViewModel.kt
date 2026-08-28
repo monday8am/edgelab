@@ -27,7 +27,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -142,15 +141,19 @@ class PlaygroundViewModelImpl(
         probeRepository.getMockResponsesAsFlow().stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     private val downloadedModels: StateFlow<List<ModelConfiguration>> =
-        modelDownloadManager.modelsStatus
-            .map { statuses ->
-                statuses
-                    .filterValues { it is ModelDownloadManager.Status.Completed }
-                    .keys
-                    .mapNotNull { modelRepository.findById(it) }
+        combine(modelRepository.models, modelDownloadManager.modelsStatus) { models, statuses ->
+                models.filter {
+                    statuses[it.bundleFilename] is ModelDownloadManager.Status.Completed
+                }
             }
             .flowOn(ioDispatcher)
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    init {
+        // The catalog is only loaded when the Model Selector is opened; the Playground needs it
+        // too, or downloaded models never appear as switchable targets on a fresh start.
+        modelRepository.refreshModels()
+    }
 
     override val uiState: StateFlow<PlaygroundUiState> =
         combine(availableProbes, downloadedModels, viewModelState) { probes, models, state ->

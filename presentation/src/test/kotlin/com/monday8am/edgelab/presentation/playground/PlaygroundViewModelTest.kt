@@ -98,6 +98,17 @@ class PlaygroundViewModelTest {
     }
 
     @Test
+    fun `Initialize should load the catalog so a downloaded model is switchable on a fresh start`() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertEquals(1, modelRepo.refreshCallCount)
+            assertEquals(1, viewModel.uiState.value.availableModels.size)
+            viewModel.dispose()
+        }
+
+    @Test
     fun `Initialize should expose preset probes from the repository`() = runTest {
         val preset = testTool("get_location")
         probes.setProbes(listOf(preset), mapOf("get_location" to "{\"lat\":1}"))
