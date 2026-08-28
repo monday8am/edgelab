@@ -55,7 +55,11 @@ class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL)
     }
 
     companion object {
-        /** Cheapest Gemini tier with genuinely good tool calling (plan.md "Cloud leg"). */
+        /**
+         * Free-tier eligible on the Gemini Developer API path, with tool calling verified on the
+         * seeded probes. Cheaper tiers exist — see the model table in
+         * `docs/edgelab/research-cloud-models-interactions-api.md`.
+         */
         const val DEFAULT_CLOUD_MODEL = "gemini-3.5-flash-lite"
 
         internal const val SETUP_REQUIRED_MESSAGE =

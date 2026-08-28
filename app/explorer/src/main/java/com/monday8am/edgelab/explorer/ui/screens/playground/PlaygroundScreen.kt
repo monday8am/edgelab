@@ -153,7 +153,8 @@ private fun ModelHeader(
                     Text(
                         text =
                             when (target) {
-                                PlaygroundTarget.Cloud -> "Cloud: Gemini Flash — no download needed"
+                                PlaygroundTarget.Cloud ->
+                                    "Cloud: Gemini Flash Lite — no download needed"
                                 is PlaygroundTarget.Local -> "On-device: ${target.model.displayName}"
                             },
                         style = MaterialTheme.typography.bodySmall,
