@@ -1,5 +1,7 @@
 # Handoff — EdgeLab Playground v1
 
+> **Status (2026-08-27): resolved.** The cloud blocker below was cleared — Firebase project `edge-agent-lab` is live, App Check installed, and the first real Gemini turn succeeded (model `gemini-3.5-flash-lite`, `role = "user"` for function responses). Findings: `docs/edgelab/research-cloud-models-interactions-api.md`. Kept as a historical record.
+
 **Next session's job: get this code actually running and correct on a real device.**
 
 Repo: `/Users/anton/Projects/edgelab`

@@ -42,6 +42,13 @@ The only open items under **Next Up** are model-filtering and server-side aggreg
 - [x] Microsite launched at [edgeagentlab.dev](https://edgeagentlab.dev)
 - [x] Author manager screen (add/remove HuggingFace authors)
 
+### Playground v1 — Minimal Delight Loop _(Aug 2026)_
+- [x] Cloud Playground via Firebase AI Logic (`firebase-ai` SDK) — primary nav entry, zero download, `gemini-3.5-flash-lite`
+- [x] Preset Probe library seeded from `data/.../tool_tests.json` (1-tap add)
+- [x] Annotated Trace with tool-call cards and `[used/ignored tool output]` tags
+- [x] Firebase App Check (debug provider / Play Integrity) + `google-services.json` via CI secret, plugin auto-applies
+- [x] First real Gemini turn verified on device; cloud-leg research in `docs/edgelab/research-cloud-models-interactions-api.md`
+
 ## Next Up
 
 - [x] Upload app to Play Store (recreated as `com.monday8am.edgelab.explorer`)
