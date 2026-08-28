@@ -1,66 +1,43 @@
-# Research — Cloud leg: blocked API, cheapest model, Interactions API
+# Research — Cloud leg: provider path, model choice, Interactions API
 
-*Researched 2026-08-27 against primary sources (Google AI docs, Firebase Android release notes, live API probes with the project's own API key + App Check debug token).*
+*Researched 2026-08-27 (Google AI docs, Firebase Android release notes, live API probes). Updated 2026-08-28: the cloud leg is live.*
 
-## TL;DR
+## Provider path: Gemini Developer API
 
-1. **The first cloud call fails because `aiplatform.googleapis.com` (Agent Platform API) is not enabled** on `edge-agent-lab` — not because of the model id. Fix: enable it at
-   `https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project=edge-agent-lab`.
-   (Alternative: switch AI Logic to the "Gemini Developer API" service in Firebase console settings, which doesn't require this API — but the project is currently set up on the Agent Platform path.)
-2. **Cheapest usable model: `gemini-2.5-flash-lite`** ($0.10/$0.40 per 1M in/out). Best quality-per-price for tool calling: `gemini-3.1-flash-lite` ($0.25/$1.50). Everything is **free-tier eligible**, so Playground testing costs nothing either way.
-3. **Interactions API is a Gemini-API-only surface (GA June 2026).** Firebase AI Logic / `firebase-ai` Kotlin does not expose it — adopting it means bypassing Firebase's server-side key proxy, which contradicts ADR 0002's security posture. Not for v1.
-
-## What the live probes showed
-
-With the API key from `google-services.json` + a debug App Check token (exchanged via `exchangeDebugToken` — which also proves the App Check console registration works):
-
-- `generativelanguage.googleapis.com` (plain Gemini API) → **403 blocked** by key restrictions (key is scoped to Firebase AI Logic only — as intended).
-- `firebasevertexai.googleapis.com` (AI Logic proxy) with App Check → App Check **accepted**, then every model returned:
-  > `PERMISSION_DENIED: Agent Platform API has not been used in project edge-agent-lab before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview?project=edge-agent-lab`
-
-  The failure is identical for all model ids, so `gemini-2.5-flash` availability is still unverified until the API is enabled.
-
-## Model landscape & pricing (Paid tier, per 1M tokens; source: ai.google.dev/gemini-api/docs/pricing)
-
-| Model | Input | Output | Notes |
-|---|---|---|---|
-| `gemini-2.5-flash-lite` | $0.10 | $0.40 | cheapest overall; "fastest, most budget-friendly multimodal in the 2.5 family" |
-| `gemini-3.1-flash-lite` | $0.25 | $1.50 | "frontier-class performance at a fraction of the cost"; optimized for high-volume agentic tasks |
-| `gemini-2.5-flash` | $0.30 | $2.50 | current `DEFAULT_CLOUD_MODEL` |
-| `gemini-3.5-flash-lite` | $0.30 | $2.50 | fastest 3.5 |
-| `gemini-3.6-flash` | $0.75 | $3.75 | promo pricing through Dec 31 2026 ($1.50/$7.50 in 2027) |
-| `gemini-3.7-flash` | $0.75 | $3.75 | latest/most capable Flash; same promo pricing |
-| `gemini-3.5-flash` | $1.50 | $9.00 | legacy 3.5 flagship |
-
-All text models above have a **free tier** ("Free of charge" with rate limits), so dev/test on the Playground costs $0 regardless of choice. Free-tier content may be used for product improvement (paid tier: not used).
-
-**Recommendation:** keep `gemini-2.5-flash` for the first verified call (cheapest 2.5-tier with strong tool calling), then consider `gemini-3.1-flash-lite` as the default if its tool calling holds up on the seeded probes — 5–7× cheaper than 3.6/3.7 Flash, and those add nothing the Playground's contract needs.
-
-## Interactions API (source: ai.google.dev/gemini-api/docs/interactions)
-
-- GA since June 2026; Google's recommended interface for all new Gemini work. `generateContent` is now "legacy but fully supported."
-- Adds: server-side conversation state (`previous_interaction_id`, lower multi-turn cost via cache hits), observable execution steps, `background=true` for long tasks, one endpoint for models *and* managed agents.
-- Storage: interactions retained 55 days (paid) / 1 day (free) by default; `store=false` opts out (but disables state/background features).
-
-**Why we're not adopting it now:** it exists only on the Gemini Developer API / Agent Platform surfaces. The `firebase-ai` Android SDK (17.16.0 is latest; we're on 17.12.1) has no Interactions surface — its newest AI-Logic additions are TemplateChat "Chat interactions" (server prompt templates), which is a different feature. Using the Interactions API from the app would mean shipping a Gemini API key in the client or building a backend proxy — both contradict ADR 0002 (Firebase AI Logic chosen precisely so the key stays server-side). Revisit if the Playground grows into a managed-agent host; until then, `Chat`/`generateContent` remains fully supported.
-
-## Firebase AI Logic backend rename (source: firebase.google.com/support/release-notes/android)
-
-Vertex AI was renamed **Gemini Enterprise Agent Platform**; `GenerativeBackend.vertexAI` is deprecated in favor of `GenerativeBackend.agentPlatform` (SDK #8437; also changes the default location to `global`). Our code uses `GenerativeBackend.googleAI()`, which is unaffected by the rename but routes through the same proxy — which is why the project needs `aiplatform.googleapis.com` enabled.
-
-## Billing: which provider path you're on decides free vs paid (source: firebase.google.com/docs/ai-logic/pricing)
-
-Enabling `aiplatform.googleapis.com` is itself free, but it's only demanded because the project routes via the **Agent Platform (Vertex AI)** provider:
+AI Logic offers two provider paths, and the choice decides billing:
 
 | AI Logic provider | Billing | Free tier |
 |---|---|---|
-| **Gemini Developer API** (switchable in AI Logic settings) | No Cloud Billing — project stays on no-cost Spark plan | ✅ free tier for the Flash models, rate-limited |
-| **Agent Platform (Vertex AI)** — current path | Blaze (Cloud Billing) + prepayment for new billing accounts | ❌ pay-as-you-go only |
+| **Gemini Developer API** — our path | No Cloud Billing; project stays on Spark | ✅ free tier for the Flash models, rate-limited |
+| Agent Platform (Vertex AI) | Blaze + prepayment for new billing accounts | ❌ pay-as-you-go only |
 
-Real-world cost even on Blaze is trivial (a Playground turn ≈ 2–4K tokens ≈ fractions of a cent), but the free tier via the Gemini Developer API provider is the cleanest for dev/testing. Note free tier = "limited access to certain models"; `2.5-flash`/`flash-lite` are safely included.
+The project started on Agent Platform and every call failed with `PERMISSION_DENIED: Agent Platform API has not been used in project edge-agent-lab`. Enabling `aiplatform.googleapis.com` would have fixed it but commits the project to Blaze with no free tier, so we switched providers instead. `GenerativeBackend.googleAI()` in `FirebaseAiChatFactory` is the matching backend.
 
-## Immediate next steps
+**Two consequences for the code, both easy to get wrong:**
 
-1. Anton: enable `aiplatform.googleapis.com` for `edge-agent-lab` (URL above), wait a few minutes for propagation.
-2. Re-probe `gemini-2.5-flash:generateContent` (or just run the Playground's first cloud turn).
-3. If it resolves, proceed with the seeded-probe verification from the handoff; evaluate `gemini-3.1-flash-lite` tool calling after.
+- Function responses must use `role = "user"`. `role = "function"` is an Agent-Platform-ism the Developer API rejects outright; a `FunctionResponsePart` is what marks the turn as a tool result, not the role string. **If the provider is ever switched back, this line flips back too.**
+- `GenerativeBackend.vertexAI` is deprecated in favour of `agentPlatform` after the Vertex → "Gemini Enterprise Agent Platform" rename (SDK #8437, also defaults location to `global`). We're unaffected while on `googleAI()`.
+
+Also established by the probes: the API key in `google-services.json` is correctly scoped — direct `generativelanguage.googleapis.com` calls return 403, only the AI Logic proxy works.
+
+## Model pricing (Paid tier, per 1M tokens; source: ai.google.dev/gemini-api/docs/pricing)
+
+| Model | Input | Output | Notes |
+|---|---|---|---|
+| `gemini-2.5-flash-lite` | $0.10 | $0.40 | cheapest overall |
+| `gemini-3.1-flash-lite` | $0.25 | $1.50 | Google positions it at high-volume agentic work |
+| `gemini-2.5-flash` | $0.30 | $2.50 | previous default |
+| `gemini-3.5-flash-lite` | $0.30 | $2.50 | **current `DEFAULT_CLOUD_MODEL`** |
+| `gemini-3.6-flash` | $0.75 | $3.75 | promo pricing through Dec 31 2026 ($1.50/$7.50 after) |
+| `gemini-3.7-flash` | $0.75 | $3.75 | latest Flash; same promo pricing |
+| `gemini-3.5-flash` | $1.50 | $9.00 | legacy 3.5 flagship |
+
+All of these are free-tier eligible on our provider path, so Playground dev/testing costs $0 whichever we pick. (Free-tier content may be used for product improvement; paid-tier content isn't.)
+
+**Open question.** `gemini-3.5-flash-lite` was picked when the first turn was made to work and it verifiably does the job, but it isn't what this table argues for: `gemini-3.1-flash-lite` is 1.7× cheaper on output for a model aimed squarely at agentic use. Costs nothing while we're on the free tier — worth an A/B on the seeded probes before we ever aren't.
+
+## Interactions API — out of scope for v1
+
+GA since June 2026 and Google's recommended interface for new Gemini work (`generateContent` is now "legacy but fully supported"). It adds server-side conversation state (`previous_interaction_id`, cheaper multi-turn via cache hits), observable execution steps, `background=true` for long tasks, and one endpoint for models *and* managed agents.
+
+We can't reach it without giving up what ADR-0002 bought us. It exists only as a direct Gemini API / Agent Platform surface, and `firebase-ai` (17.12.1 via `firebase-bom` 34.14.1; 17.16.0 is latest) doesn't expose it — its similarly-named TemplateChat "Chat interactions" is server prompt templates, a different feature. Using it would mean a client-side key or a backend proxy, which is the thing AI Logic was chosen to avoid. Revisit if the Playground grows into a managed-agent host.
