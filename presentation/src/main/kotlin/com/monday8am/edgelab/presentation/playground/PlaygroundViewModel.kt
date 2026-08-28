@@ -74,7 +74,6 @@ fun interface PlaygroundBackendFactory {
 data class PlaygroundUiState(
     val availableProbes: ImmutableList<ToolSpecification> = persistentListOf(),
     val activeProbes: ImmutableList<ToolSpecification> = persistentListOf(),
-    val prompt: String = "",
     val trace: ImmutableList<TraceEntry> = persistentListOf(),
     val target: PlaygroundTarget = PlaygroundTarget.Cloud,
     /** Downloaded `.litertlm` models the dev can switch to; empty until they download one. */
@@ -88,11 +87,9 @@ sealed class PlaygroundUiAction {
 
     data class RemoveProbe(val probe: ToolSpecification) : PlaygroundUiAction()
 
-    data class PromptChanged(val text: String) : PlaygroundUiAction()
-
     data class SelectTarget(val target: PlaygroundTarget) : PlaygroundUiAction()
 
-    data object RunPrompt : PlaygroundUiAction()
+    data class RunPrompt(val text: String) : PlaygroundUiAction()
 
     data object ClearTrace : PlaygroundUiAction()
 }
@@ -124,7 +121,6 @@ class PlaygroundViewModelImpl(
     @Volatile private var currentTarget: PlaygroundTarget? = null
 
     private data class ViewModelState(
-        val prompt: String = "",
         val activeProbes: PersistentList<ToolSpecification> = persistentListOf(),
         val trace: PersistentList<TraceEntry> = persistentListOf(),
         val target: PlaygroundTarget = PlaygroundTarget.Cloud,
@@ -182,20 +178,17 @@ class PlaygroundViewModelImpl(
                                 .toPersistentList()
                     )
                 }
-            is PlaygroundUiAction.PromptChanged ->
-                viewModelState.update { it.copy(prompt = action.text) }
             is PlaygroundUiAction.SelectTarget ->
                 viewModelState.update { it.copy(target = action.target, error = null) }
-            PlaygroundUiAction.RunPrompt -> runPrompt()
+            is PlaygroundUiAction.RunPrompt -> runPrompt(action.text)
             PlaygroundUiAction.ClearTrace ->
                 viewModelState.update { it.copy(trace = persistentListOf(), error = null) }
         }
     }
 
-    private fun runPrompt() {
+    private fun runPrompt(promptText: String) {
         val state = viewModelState.value
         if (state.isRunning) return
-        val promptText = state.prompt
         if (promptText.isBlank()) {
             viewModelState.update { it.copy(error = "Type a prompt first") }
             return
@@ -207,7 +200,6 @@ class PlaygroundViewModelImpl(
                 isRunning = true,
                 error = null,
                 trace = (it.trace + userPromptEntry).toPersistentList(),
-                prompt = "",
             )
         }
 
@@ -301,7 +293,6 @@ class PlaygroundViewModelImpl(
         PlaygroundUiState(
             availableProbes = probes.toImmutableList(),
             activeProbes = state.activeProbes,
-            prompt = state.prompt,
             trace = state.trace,
             target = state.target,
             availableModels = models.toImmutableList(),

@@ -27,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -83,6 +86,10 @@ private fun PlaygroundScreenContent(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+
+    // Draft is local UI state: keystrokes render immediately instead of round-tripping through the
+    // ViewModel, which only needs the text when Run is pressed.
+    var draftPrompt by rememberSaveable { mutableStateOf("") }
 
     // Header and the probe library scroll with the trace, so the bottom index isn't simply
     // trace.lastIndex; recompute it whenever the trace grows or the running spinner appears.
@@ -166,10 +173,13 @@ private fun PlaygroundScreenContent(
         }
 
         PromptBar(
-            prompt = uiState.prompt,
+            prompt = draftPrompt,
             isRunning = uiState.isRunning,
-            onPromptChanged = { onAction(PlaygroundUiAction.PromptChanged(it)) },
-            onRun = { onAction(PlaygroundUiAction.RunPrompt) },
+            onPromptChanged = { draftPrompt = it },
+            onRun = {
+                onAction(PlaygroundUiAction.RunPrompt(draftPrompt))
+                draftPrompt = ""
+            },
             onClear = { onAction(PlaygroundUiAction.ClearTrace) },
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
@@ -474,7 +484,6 @@ private fun PlaygroundPreviewWithTrace() {
                 PlaygroundUiState(
                     availableProbes = persistentListOf(probe),
                     activeProbes = persistentListOf(probe),
-                    prompt = "",
                     trace = trace,
                     availableModels = persistentListOf(model),
                     target = PlaygroundTarget.Local(model),

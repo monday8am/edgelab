@@ -73,9 +73,8 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Where am I?"))
         backend.text = "You are in Siena."
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Where am I?"))
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.error)
@@ -129,13 +128,11 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("one"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("one"))
         advanceUntilIdle()
 
         viewModel.onUiAction(PlaygroundUiAction.SelectTarget(PlaygroundTarget.Local(TEST_MODEL)))
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("two"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("two"))
         advanceUntilIdle()
 
         assertEquals(
@@ -192,8 +189,7 @@ class PlaygroundViewModelTest {
         advanceUntilIdle()
 
         viewModel.onUiAction(PlaygroundUiAction.AddProbe(preset))
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Weather?"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
         advanceUntilIdle()
 
         assertEquals(listOf(preset), backend.lastTools)
@@ -210,7 +206,7 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt(""))
         advanceUntilIdle()
 
         assertEquals("Type a prompt first", viewModel.uiState.value.error)
@@ -223,9 +219,8 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Where am I?"))
         backend.text = "You are in Siena."
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Where am I?"))
         advanceUntilIdle()
 
         val trace = viewModel.uiState.value.trace
@@ -235,8 +230,6 @@ class PlaygroundViewModelTest {
         assertTrue(trace[1] is TraceEntry.ModelText)
         assertEquals("You are in Siena.", (trace[1] as TraceEntry.ModelText).text)
         assertEquals(null, (trace[1] as TraceEntry.ModelText).usedToolOutput)
-        // The prompt field is cleared after sending.
-        assertEquals("", viewModel.uiState.value.prompt)
         assertFalse(viewModel.uiState.value.isRunning)
         viewModel.dispose()
     }
@@ -246,9 +239,8 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Hi"))
         backend.runShouldFail = true
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Hi"))
         advanceUntilIdle()
 
         val trace = viewModel.uiState.value.trace
@@ -262,9 +254,8 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Hi"))
         backend.initializeShouldFail = true
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Hi"))
         advanceUntilIdle()
 
         val trace = viewModel.uiState.value.trace
@@ -278,12 +269,10 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("one"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("one"))
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("two"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("two"))
         advanceUntilIdle()
 
         assertEquals<List<PlaygroundTarget>>(
@@ -303,10 +292,9 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Weather?"))
         backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
         backend.text = "It's 21 degrees in Madrid."
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
         advanceUntilIdle()
 
         val modelText =
@@ -320,10 +308,9 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Weather?"))
         backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
         backend.text = "I cannot check the weather right now."
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
         advanceUntilIdle()
 
         val modelText =
@@ -341,8 +328,7 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Hi"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Hi"))
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.trace.isNotEmpty())
 
@@ -359,8 +345,7 @@ class PlaygroundViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.onUiAction(PlaygroundUiAction.PromptChanged("Hi"))
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt)
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Hi"))
         advanceUntilIdle()
 
         viewModel.dispose()
