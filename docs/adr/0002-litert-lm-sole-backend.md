@@ -10,6 +10,6 @@ Considered and rejected:
 - **Multi on-device backend abstraction now.** Would trade the thing that makes tool-calling easy for generality we don't need. Re-evaluate only if litert-lm tool-calling support regresses or a second *on-device* backend clearly wins on the function-calling job.
 - **Harvesting all HF `.litertlm` models at runtime.** Surfaces 7B/9B artifacts that saturate a phone and refutes the "models too big" problem. The catalog stays curated + size-bounded; bring-your-own via HF auth covers the dev who wants what isn't curated.
 
-Open sub-decision (grill Q9.5): which cloud provider and whose key funds the onboarding traffic. BYOK is a later iteration; day-one leans keyless/free-tier or a maintainer-funded proxy because expected traffic is very low.
+Sub-decision — which cloud provider, and whose key: **resolved 2026-08.** Gemini via Firebase AI Logic (`firebase-ai` SDK), maintainer-funded, on the free-tier Gemini Developer API path. BYOK remains a later iteration. See `CONTEXT.md` → Decisions → Cloud leg.
 
 Consequences: the Model Catalog is gated to `.litertlm` for on-device play; "add Gemma 4 on-device" waits on a `.litertlm` artifact existing; P5 ("only one engine") stays retired — it was always about on-device engines.

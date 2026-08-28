@@ -42,15 +42,11 @@ What **doesn't** exist: the in-app UI to *drive* the Probe engine interactively 
 
 A new dev reaches the **Playground with zero download**: an online model runs the first prompts so the dev learns the game immediately. Once they understand, they download a local `.litertlm` and switch to on-device. The download fills time the dev is already engaged, and yields a cloud↔local comparison for free.
 
-- **Cloud leg = Gemini Flash via Firebase AI Logic (maintainer-funded).** Google holds the API key server-side; the app ships no key and the dev supplies none. Gemini Flash: cheapest model with genuinely good tool calling.
+- **Cloud leg = Gemini via Firebase AI Logic, `firebase-ai` SDK (maintainer-funded), model `gemini-3.5-flash-lite`.** AI Logic holds the API key server-side; the app ships no key and the dev supplies none, so there is no proxy to write, deploy, or fund. Model choice and provider path: `docs/edgelab/research-cloud-models-interactions-api.md`.
 - **Honest about the comparison**: local AI is weaker today. That gap *is* why this app exists. No hiding it.
 - **BYOK** is a later iteration.
 
-**Binding decision (resolved at wire time, 2026-08-16).** The deferred "which Firebase surface" question is settled: **the `firebase-ai` SDK, not a hand-written Cloud Function.** Firebase AI Logic already does the one job a custom proxy would have done — keep the key off the client — so there is no server code to write, deploy, or fund. Rejected: a Functions REST/callable proxy (all the same key-hiding, plus a deployed service to own).
-
-Correcting a premise this plan was written on: Firebase was **not** already a dependency. It appeared in the version catalog but was fully commented out in `app/explorer/build.gradle.kts`, and only as Crashlytics. `firebase-ai` is a genuinely new dependency.
-
-**Still needed from the maintainer**: a Firebase project with the Gemini backend enabled, a `google-services.json` in `app/explorer`, and the `com.google.gms.google-services` plugin uncommented. Until then the app builds and the on-device target works; the Cloud target fails at first use with a message saying exactly this.
+**Setup — done (2026-08-27), live and verified on device.** Firebase project `edge-agent-lab` on the Gemini Developer API provider; `google-services.json` is gitignored locally and injected in CI from a GitHub secret (`ci.yml`/`release.yml` decode it into `app/explorer/`); the google-services plugin auto-applies when the file exists (PR #108). App Check in `ExplorerApp`: debug provider with a registered token, Play Integrity for release.
 
 ## V1 cut line — the Minimal Delight Loop
 
@@ -58,10 +54,10 @@ Correcting a premise this plan was written on: Firebase was **not** already a de
 
 ### Phase 1 — v1 (Minimal Delight Loop)
 
-- [x] Cloud Playground (Gemini Flash via Firebase AI Logic) as the primary nav entry — default target, zero download
+- [x] Cloud Playground (Gemini via Firebase AI Logic) as the primary nav entry — default target, zero download
 - [x] Preset Probe library, seeded from `data/.../tool_tests.json` (1-tap add) — *tweak-after-add still missing*
 - [x] Send prompt → annotated Trace — transcript + tool-call cards + `[used/ignored tool output]` tags (heuristic judge in `ToolOutputUsage`)
-- [x] Firebase surface for the Gemini proxy — resolved to the `firebase-ai` SDK (see Onboarding above); needs `google-services.json` to run
+- [x] Firebase surface for the Gemini proxy — resolved to the `firebase-ai` SDK (see Onboarding above); live and verified on device (2026-08-27), App Check included
 
 **Out of scope for v1**: local-model download, paste-import, Benchmark, Test-Suite reskin.
 
