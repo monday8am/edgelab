@@ -17,13 +17,13 @@ import com.monday8am.edgelab.agent.playground.CloudFunctionResponse
 import com.monday8am.edgelab.agent.playground.CloudReply
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
@@ -56,7 +56,7 @@ class FirebaseAiChatFactory(private val modelName: String = DEFAULT_CLOUD_MODEL)
 
     companion object {
         /** Cheapest Gemini tier with genuinely good tool calling (plan.md "Cloud leg"). */
-        const val DEFAULT_CLOUD_MODEL = "gemini-2.5-flash"
+        const val DEFAULT_CLOUD_MODEL = "gemini-3.5-flash-lite"
 
         internal const val SETUP_REQUIRED_MESSAGE =
             "Cloud Playground is not configured. Add google-services.json to app/explorer and " +
@@ -70,8 +70,10 @@ private class FirebaseAiChatSession(private val chat: Chat) : CloudChatSession {
     override suspend fun send(prompt: String): CloudReply = chat.sendMessage(prompt).toCloudReply()
 
     override suspend fun respondToCalls(responses: List<CloudFunctionResponse>): CloudReply {
+        // The Google AI backend only accepts "user"/"model" as roles — "function" is a Vertex-ism
+        // that it rejects outright. A FunctionResponsePart still reads as a tool result to Gemini.
         val turn =
-            content(role = "function") {
+            content(role = "user") {
                 responses.forEach { part(FunctionResponsePart(it.name, it.jsonResponse.asJsonObject())) }
             }
         return chat.sendMessage(turn).toCloudReply()
@@ -93,7 +95,7 @@ private fun String.asJsonObject(): JsonObject =
     runCatching { kotlinx.serialization.json.Json.parseToJsonElement(this).jsonObject }
         .getOrElse { buildJsonObject { put("result", this@asJsonObject) } }
 
-private fun kotlinx.serialization.json.JsonElement.unwrap(): Any? =
+private fun JsonElement.unwrap(): Any? =
     when (this) {
         is JsonPrimitive ->
             if (isString) content
