@@ -53,6 +53,16 @@ class ToolOutputUsageTest {
         )
     }
 
+    @Test
+    fun `bare date-string mock contributes evidence instead of being dropped as a literal`() {
+        assertTrue(ToolOutputUsage.isUsed("2024-02-15", "The meeting is in 2024."))
+    }
+
+    @Test
+    fun `bare single-word mock contributes evidence instead of being dropped as a literal`() {
+        assertTrue(ToolOutputUsage.isUsed("sunny", "It is sunny today."))
+    }
+
     // endregion
 
     // region Ignored
@@ -90,6 +100,11 @@ class ToolOutputUsageTest {
     @Test
     fun `mock with only non-distinctive content is ignored`() {
         assertFalse(ToolOutputUsage.isUsed("""{"ok": true, "count": 3}""", "It is 3, ok."))
+    }
+
+    @Test
+    fun `null values in the mock are not evidence`() {
+        assertFalse(ToolOutputUsage.isUsed("""{"city": null}""", "The value is null."))
     }
 
     // endregion

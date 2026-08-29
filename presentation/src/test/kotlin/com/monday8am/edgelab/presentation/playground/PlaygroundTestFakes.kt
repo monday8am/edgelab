@@ -1,6 +1,7 @@
 package com.monday8am.edgelab.presentation.playground
 
 import com.monday8am.edgelab.agent.playground.PlaygroundBackend
+import com.monday8am.edgelab.agent.playground.ToolOutputJudge
 import com.monday8am.edgelab.agent.playground.TurnResult
 import com.monday8am.edgelab.agent.playground.TurnToolCall
 import com.monday8am.edgelab.data.model.ModelCatalog
@@ -12,6 +13,7 @@ import com.monday8am.edgelab.data.testing.FunctionSpec
 import com.monday8am.edgelab.data.testing.ToolSpecification
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -157,5 +159,52 @@ internal fun testTool(name: String, description: String = "test probe"): ToolSpe
                 parameters = JsonObject(emptyMap()),
             )
     )
+
+internal class FakeToolOutputJudge : ToolOutputJudge {
+    var verdict: Boolean? = false
+
+    var callCount = 0
+        private set
+
+    var lastMock: String? = null
+        private set
+
+    var lastText: String? = null
+        private set
+
+    override suspend fun isUsed(mockResponse: String, modelText: String): Boolean? {
+        callCount++
+        lastMock = mockResponse
+        lastText = modelText
+        return verdict
+    }
+}
+
+/** Suspends the verdict until [release] so tests can observe the pending state. */
+internal class GatedToolOutputJudge : ToolOutputJudge {
+    private val gate = CompletableDeferred<Unit>()
+
+    var verdict: Boolean? = false
+
+    override suspend fun isUsed(mockResponse: String, modelText: String): Boolean? {
+        gate.await()
+        return verdict
+    }
+
+    fun release() {
+        gate.complete(Unit)
+    }
+}
+
+internal class RecordingJudgeFactory : (PlaygroundTarget) -> ToolOutputJudge? {
+    val requestedTargets = mutableListOf<PlaygroundTarget>()
+
+    var judge: ToolOutputJudge? = null
+
+    override fun invoke(target: PlaygroundTarget): ToolOutputJudge? {
+        requestedTargets += target
+        return judge
+    }
+}
 
 internal val TEST_MODEL: ModelConfiguration = ModelCatalog.GEMMA3_1B

@@ -1,5 +1,6 @@
 package com.monday8am.edgelab.presentation.playground
 
+import com.monday8am.edgelab.agent.playground.HeuristicToolOutputJudge
 import com.monday8am.edgelab.agent.playground.TurnToolCall
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -25,6 +26,8 @@ class PlaygroundViewModelTest {
     private lateinit var backend: FakePlaygroundBackend
     private lateinit var downloadManager: FakeModelDownloadManagerForPlayground
     private lateinit var modelRepo: FakeModelRepository
+    private lateinit var judgeFactory: RecordingJudgeFactory
+    private lateinit var secondOpinionJudge: FakeToolOutputJudge
 
     @BeforeTest
     fun setup() {
@@ -37,6 +40,8 @@ class PlaygroundViewModelTest {
                 downloadedFilenames = setOf(TEST_MODEL.bundleFilename)
             )
         modelRepo = FakeModelRepository(listOf(TEST_MODEL))
+        secondOpinionJudge = FakeToolOutputJudge()
+        judgeFactory = RecordingJudgeFactory().apply { judge = secondOpinionJudge }
     }
 
     @AfterTest
@@ -50,6 +55,8 @@ class PlaygroundViewModelTest {
             modelDownloadManager = downloadManager,
             modelRepository = modelRepo,
             backendFactory = backendFactory,
+            heuristicJudge = HeuristicToolOutputJudge(),
+            judgeFactory = judgeFactory,
             ioDispatcher = testDispatcher,
         )
 
@@ -286,23 +293,25 @@ class PlaygroundViewModelTest {
     // region Used/ignored tool output Tests
 
     @Test
-    fun `RunPrompt should tag model text as used when it integrates the mock output`() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
+    fun `RunPrompt should tag model text as used when the heuristic finds the mock output`() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
 
-        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
-        backend.text = "It's 21 degrees in Madrid."
-        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
-        advanceUntilIdle()
+            backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+            backend.text = "It's 21 degrees in Madrid."
+            viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
+            advanceUntilIdle()
 
-        val modelText =
-            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
-        assertEquals(true, modelText.usedToolOutput)
-        viewModel.dispose()
-    }
+            val modelText =
+                viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+            assertEquals(ToolOutputVerdict.USED, modelText.usedToolOutput)
+            assertEquals(0, secondOpinionJudge.callCount)
+            viewModel.dispose()
+        }
 
     @Test
-    fun `RunPrompt should tag model text as ignored when it ignores the mock output`() = runTest {
+    fun `RunPrompt should ask for a second opinion when the heuristic finds nothing`() = runTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -313,7 +322,72 @@ class PlaygroundViewModelTest {
 
         val modelText =
             viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
-        assertEquals(false, modelText.usedToolOutput)
+        assertEquals(ToolOutputVerdict.IGNORED, modelText.usedToolOutput)
+        assertEquals(1, secondOpinionJudge.callCount)
+        assertEquals("get_weather: {\"tempC\": 21}", secondOpinionJudge.lastMock)
+        assertEquals("I cannot check the weather right now.", secondOpinionJudge.lastText)
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `RunPrompt should keep apparently-ignored while the second opinion is pending`() = runTest {
+        val gated = GatedToolOutputJudge().apply { verdict = true }
+        judgeFactory.judge = gated
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+        backend.text = "I cannot check the weather right now."
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
+        advanceUntilIdle()
+
+        val pending =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(ToolOutputVerdict.APPARENTLY_IGNORED, pending.usedToolOutput)
+
+        gated.release()
+        advanceUntilIdle()
+
+        val resolved =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(ToolOutputVerdict.USED, resolved.usedToolOutput)
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `RunPrompt should keep apparently-ignored when the second opinion abstains`() = runTest {
+        secondOpinionJudge.verdict = null
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+        backend.text = "I cannot check the weather right now."
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
+        advanceUntilIdle()
+
+        val modelText =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(ToolOutputVerdict.APPARENTLY_IGNORED, modelText.usedToolOutput)
+        assertEquals(1, secondOpinionJudge.callCount)
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `Local target should keep apparently-ignored and never consult a judge`() = runTest {
+        judgeFactory.judge = null
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(PlaygroundUiAction.SelectTarget(PlaygroundTarget.Local(TEST_MODEL)))
+        advanceUntilIdle()
+        backend.toolCalls = listOf(TurnToolCall("get_weather", emptyMap(), """{"tempC": 21}"""))
+        backend.text = "I cannot check the weather right now."
+        viewModel.onUiAction(PlaygroundUiAction.RunPrompt("Weather?"))
+        advanceUntilIdle()
+
+        val modelText =
+            viewModel.uiState.value.trace.filterIsInstance<TraceEntry.ModelText>().single()
+        assertEquals(ToolOutputVerdict.APPARENTLY_IGNORED, modelText.usedToolOutput)
         viewModel.dispose()
     }
 

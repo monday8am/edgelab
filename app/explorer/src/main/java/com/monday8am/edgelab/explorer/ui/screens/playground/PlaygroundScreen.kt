@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.edgelab.agent.playground.HeuristicToolOutputJudge
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.testing.FunctionSpec
@@ -49,6 +50,7 @@ import com.monday8am.edgelab.presentation.playground.PlaygroundTarget
 import com.monday8am.edgelab.presentation.playground.PlaygroundUiAction
 import com.monday8am.edgelab.presentation.playground.PlaygroundUiState
 import com.monday8am.edgelab.presentation.playground.PlaygroundViewModelImpl
+import com.monday8am.edgelab.presentation.playground.ToolOutputVerdict
 import com.monday8am.edgelab.presentation.playground.TraceEntry
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -66,6 +68,8 @@ fun PlaygroundScreen(
                     modelDownloadManager = ServiceLocator.modelDownloadManager,
                     modelRepository = ServiceLocator.modelRepository,
                     backendFactory = ServiceLocator.playgroundBackendFactory,
+                    heuristicJudge = HeuristicToolOutputJudge(),
+                    judgeFactory = ServiceLocator.playgroundJudgeFactory,
                 )
             )
         },
@@ -293,16 +297,25 @@ private fun TraceEntryRow(entry: TraceEntry) {
                 container = MaterialTheme.colorScheme.primaryContainer,
             )
         is TraceEntry.ModelText -> {
-            val used = entry.usedToolOutput
+            val verdict = entry.usedToolOutput
             TraceBubble(
                 label = "Model",
                 text = entry.text,
                 container = MaterialTheme.colorScheme.secondaryContainer,
                 tag =
-                    used?.let { if (it) "[used tool output]" else "[ignored tool output]" },
+                    when (verdict) {
+                        ToolOutputVerdict.USED -> "[used tool output]"
+                        ToolOutputVerdict.IGNORED -> "[ignored tool output]"
+                        ToolOutputVerdict.APPARENTLY_IGNORED -> "[apparently ignored tool output]"
+                        null -> null
+                    },
                 tagColor =
-                    if (used == true) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error,
+                    when (verdict) {
+                        ToolOutputVerdict.USED -> MaterialTheme.colorScheme.primary
+                        ToolOutputVerdict.IGNORED -> MaterialTheme.colorScheme.error
+                        ToolOutputVerdict.APPARENTLY_IGNORED -> MaterialTheme.colorScheme.tertiary
+                        null -> androidx.compose.ui.graphics.Color.Unspecified
+                    },
             )
         }
         is TraceEntry.ToolCallCard -> ToolCallCardRow(entry)
@@ -474,7 +487,7 @@ private fun PlaygroundPreviewWithTrace() {
         TraceEntry.ModelText(
             id = "t4",
             text = "You are in Madrid at 40.42, -3.70.",
-            usedToolOutput = true,
+            usedToolOutput = ToolOutputVerdict.USED,
         ),
     )
     EdgeLabTheme {
@@ -509,7 +522,37 @@ private fun PlaygroundPreviewIgnoredToolOutput() {
         TraceEntry.ModelText(
             id = "t4",
             text = "I cannot check the weather right now.",
-            usedToolOutput = false,
+            usedToolOutput = ToolOutputVerdict.IGNORED,
+        ),
+    )
+    EdgeLabTheme {
+        PlaygroundScreenContent(
+            uiState = PlaygroundUiState(trace = trace),
+            onAction = {},
+            onNavigateToModelSelector = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Apparently ignored tool output", widthDp = 380)
+@Composable
+private fun PlaygroundPreviewApparentlyIgnoredToolOutput() {
+    val trace = persistentListOf(
+        TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),
+        TraceEntry.ToolCallCard(
+            id = "t2",
+            toolName = "get_location",
+            args = persistentListOf(),
+        ),
+        TraceEntry.ToolOutput(
+            id = "t3",
+            toolName = "get_location",
+            mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
+        ),
+        TraceEntry.ModelText(
+            id = "t4",
+            text = "You are in Madrid.",
+            usedToolOutput = ToolOutputVerdict.APPARENTLY_IGNORED,
         ),
     )
     EdgeLabTheme {

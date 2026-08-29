@@ -2,7 +2,7 @@ package com.monday8am.edgelab.presentation.playground
 
 import co.touchlab.kermit.Logger
 import com.monday8am.edgelab.agent.playground.PlaygroundBackend
-import com.monday8am.edgelab.agent.playground.ToolOutputUsage
+import com.monday8am.edgelab.agent.playground.ToolOutputJudge
 import com.monday8am.edgelab.agent.playground.TurnResult
 import com.monday8am.edgelab.agent.playground.TurnToolCall
 import com.monday8am.edgelab.data.model.ModelConfiguration
@@ -40,7 +40,7 @@ sealed interface TraceEntry {
     data class ModelText(
         override val id: String,
         val text: String,
-        val usedToolOutput: Boolean? = null,
+        val usedToolOutput: ToolOutputVerdict? = null,
     ) : TraceEntry
 
     data class ToolCallCard(
@@ -56,6 +56,16 @@ sealed interface TraceEntry {
 }
 
 data class ArgValue(val name: String, val value: String)
+
+/**
+ * Tag lifecycle: heuristic evidence marks it USED immediately; no literal evidence shows
+ * APPARENTLY_IGNORED until a second opinion resolves it to USED/IGNORED (or it stays pending).
+ */
+enum class ToolOutputVerdict {
+    USED,
+    APPARENTLY_IGNORED,
+    IGNORED,
+}
 
 /**
  * v1 defaults to [Cloud] — zero download before the first prompt; [Local] once a `.litertlm` lands.
@@ -106,6 +116,9 @@ class PlaygroundViewModelImpl(
     private val modelDownloadManager: ModelDownloadManager,
     private val modelRepository: ModelRepository,
     private val backendFactory: PlaygroundBackendFactory,
+    private val heuristicJudge: ToolOutputJudge,
+    /** Returns null for targets with no semantic judge — the tag stays heuristic-only there. */
+    private val judgeFactory: (PlaygroundTarget) -> ToolOutputJudge?,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PlaygroundViewModel {
 
@@ -229,9 +242,11 @@ class PlaygroundViewModelImpl(
                     return
                 }
 
+            val entries = turn.toTraceEntries()
             viewModelState.update { state ->
-                state.copy(trace = (state.trace + turn.toTraceEntries()).toPersistentList())
+                state.copy(trace = (state.trace + entries).toPersistentList())
             }
+            requestSecondOpinion(target, turn, entries)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -250,7 +265,7 @@ class PlaygroundViewModelImpl(
         return backendFactory.create(target).also { currentBackend = it }
     }
 
-    private fun TurnResult.toTraceEntries(): List<TraceEntry> {
+    private suspend fun TurnResult.toTraceEntries(): List<TraceEntry> {
         val entries = mutableListOf<TraceEntry>()
         toolCalls.forEach { call ->
             entries +=
@@ -267,11 +282,59 @@ class PlaygroundViewModelImpl(
                 )
         }
         val usedToolOutput =
-            if (toolCalls.isEmpty()) null
-            else toolCalls.any { ToolOutputUsage.isUsed(it.mockResponse, text) }
+            when {
+                toolCalls.isEmpty() -> null
+                toolCalls.any { heuristicJudge.isUsed(it.mockResponse, text) == true } ->
+                    ToolOutputVerdict.USED
+                else -> ToolOutputVerdict.APPARENTLY_IGNORED
+            }
         entries +=
             TraceEntry.ModelText(id = nextTraceId(), text = text, usedToolOutput = usedToolOutput)
         return entries
+    }
+
+    /**
+     * "No literal match" gets one async second opinion from the target's semantic judge. Judge
+     * failure or abstention leaves APPARENTLY_IGNORED — the tag is never a fabricated verdict.
+     */
+    private fun requestSecondOpinion(
+        target: PlaygroundTarget,
+        turn: TurnResult,
+        entries: List<TraceEntry>,
+    ) {
+        val modelText = entries.filterIsInstance<TraceEntry.ModelText>().singleOrNull() ?: return
+        if (modelText.usedToolOutput != ToolOutputVerdict.APPARENTLY_IGNORED) return
+        val judge = judgeFactory(target) ?: return
+
+        scope.launch {
+            try {
+                val mocks = turn.toolCalls.joinToString("\n") { "${it.name}: ${it.mockResponse}" }
+                val verdict =
+                    when (judge.isUsed(mocks, turn.text)) {
+                        true -> ToolOutputVerdict.USED
+                        false -> ToolOutputVerdict.IGNORED
+                        null -> return@launch
+                    }
+                viewModelState.update { state ->
+                    state.copy(
+                        trace =
+                            state.trace
+                                .map { entry ->
+                                    if (entry.id == modelText.id && entry is TraceEntry.ModelText) {
+                                        entry.copy(usedToolOutput = verdict)
+                                    } else {
+                                        entry
+                                    }
+                                }
+                                .toPersistentList()
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e("Second-opinion judge failed", e)
+            }
+        }
     }
 
     private fun TurnToolCall.toArgValues(): ImmutableList<ArgValue> =

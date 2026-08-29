@@ -4,18 +4,16 @@ import kotlin.math.abs
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 
 /**
- * Heuristic judge for the Trace's `[used/ignored tool output]` tag: did the model's final text
- * actually integrate the mock output it was handed?
- *
- * Evidence = distinctive mock content surfacing in the text: string values matched as whole words
- * (case-insensitive), numbers matched with rounding tolerance (models routinely round 40.4168 to
- * "40.42"). Trivially-common integers (|v| ≤ 10) and booleans are skipped — they match almost any
- * sentence. No evidence → ignored.
+ * Heuristic judge for the `[used/ignored tool output]` tag: literal word and number overlap between
+ * the mock output and the model's text. No literal evidence → ignored; semantic matches are not its
+ * job.
  */
 object ToolOutputUsage {
 
@@ -34,7 +32,7 @@ object ToolOutputUsage {
     private data class MockContent(val words: Set<String>, val numbers: List<Double>)
 
     private fun parseMock(mockResponse: String): MockContent {
-        // A plain-string mock ("The weather is sunny") is legitimate; it just isn't JSON.
+        // A plain-string mock is legitimate; it just isn't JSON.
         val element =
             runCatching { Json.parseToJsonElement(mockResponse) }.getOrNull()
                 ?: return MockContent(distinctiveWords(mockResponse).toSet(), emptyList())
@@ -52,8 +50,12 @@ object ToolOutputUsage {
             is JsonArray -> element.flatMap { collectValues(it) }
             is JsonPrimitive ->
                 when {
+                    element is JsonNull || element.booleanOrNull != null -> emptyList()
                     element.isString -> listOf(element.content)
-                    else -> element.doubleOrNull?.let { listOf(it) }.orEmpty()
+                    // The parser accepts bare literals: "2024-02-15" parses as an unquoted
+                    // JsonLiteral
+                    // instead of throwing, so fall back to its text.
+                    else -> element.doubleOrNull?.let { listOf(it) } ?: listOf(element.content)
                 }
         }
 
