@@ -3,6 +3,7 @@ package com.monday8am.edgelab.explorer.ui.screens.playground
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -83,45 +87,101 @@ private fun PlaygroundScreenContent(
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.trace.size) {
-        if (uiState.trace.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.trace.lastIndex)
-        }
+    // Draft is local UI state: keystrokes render immediately instead of round-tripping through the
+    // ViewModel, which only needs the text when Run is pressed.
+    var draftPrompt by rememberSaveable { mutableStateOf("") }
+
+    // Header and the probe library scroll with the trace, so the bottom index isn't simply
+    // trace.lastIndex; recompute it whenever the trace grows or the running spinner appears.
+    LaunchedEffect(uiState.trace.size, uiState.isRunning) {
+        val traceStartIndex = 1 + if (uiState.availableProbes.isNotEmpty()) 1 else 0
+        val lastIndex =
+            when {
+                uiState.isRunning -> traceStartIndex + uiState.trace.size
+                uiState.trace.isEmpty() -> traceStartIndex
+                else -> traceStartIndex + uiState.trace.size - 1
+            }
+        listState.animateScrollToItem(lastIndex)
     }
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier.fillMaxSize().padding(16.dp).imePadding(),
-    ) {
-        ModelHeader(
-            target = uiState.target,
-            availableModels = uiState.availableModels,
-            onSelectTarget = { onAction(PlaygroundUiAction.SelectTarget(it)) },
-            onNavigateToModelSelector = onNavigateToModelSelector,
-        )
-
-        ProbeLibrary(
-            availableProbes = uiState.availableProbes,
-            activeProbes = uiState.activeProbes,
-            onAddProbe = { onAction(PlaygroundUiAction.AddProbe(it)) },
-            onRemoveProbe = { onAction(PlaygroundUiAction.RemoveProbe(it)) },
-        )
-
-        TraceList(
-            trace = uiState.trace,
-            isRunning = uiState.isRunning,
+    Column(modifier = modifier.fillMaxSize().imePadding()) {
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth().weight(1f),
-            listState = listState,
-        )
+        ) {
+            item(key = "header") {
+                ModelHeader(
+                    target = uiState.target,
+                    availableModels = uiState.availableModels,
+                    onSelectTarget = { onAction(PlaygroundUiAction.SelectTarget(it)) },
+                    onNavigateToModelSelector = onNavigateToModelSelector,
+                )
+            }
 
-        uiState.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (uiState.availableProbes.isNotEmpty()) {
+                item(key = "probes") {
+                    ProbeLibrary(
+                        availableProbes = uiState.availableProbes,
+                        activeProbes = uiState.activeProbes,
+                        onAddProbe = { onAction(PlaygroundUiAction.AddProbe(it)) },
+                        onRemoveProbe = { onAction(PlaygroundUiAction.RemoveProbe(it)) },
+                    )
+                }
+            }
+
+            items(uiState.trace, key = { it.id }) { entry -> TraceEntryRow(entry) }
+
+            if (uiState.isRunning) {
+                item(key = "running") {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(4.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Text("Thinking...", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+
+            if (uiState.trace.isEmpty() && !uiState.isRunning) {
+                item(key = "empty") {
+                    Text(
+                        text =
+                            "Add a probe, type a prompt, and hit Run to watch the model call your " +
+                                "tools. The Trace shows what it did.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+
+        uiState.error?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
 
         PromptBar(
-            prompt = uiState.prompt,
+            prompt = draftPrompt,
             isRunning = uiState.isRunning,
-            onPromptChanged = { onAction(PlaygroundUiAction.PromptChanged(it)) },
-            onRun = { onAction(PlaygroundUiAction.RunPrompt) },
+            onPromptChanged = { draftPrompt = it },
+            onRun = {
+                onAction(PlaygroundUiAction.RunPrompt(draftPrompt))
+                draftPrompt = ""
+            },
             onClear = { onAction(PlaygroundUiAction.ClearTrace) },
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
     }
 }
@@ -219,46 +279,6 @@ private fun ProbeLibrary(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
-        }
-    }
-}
-
-@Composable
-private fun TraceList(
-    trace: ImmutableList<TraceEntry>,
-    isRunning: Boolean,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    modifier: Modifier = Modifier,
-) {
-    LazyColumn(
-        state = listState,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        items(trace, key = { it.id }) { entry -> TraceEntryRow(entry) }
-        if (isRunning) {
-            item("running") {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(4.dp),
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Text("Thinking...", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        if (trace.isEmpty() && !isRunning) {
-            item("empty") {
-                Text(
-                    text =
-                        "Add a probe, type a prompt, and hit Run to watch the model call your " +
-                            "tools. The Trace shows what it did.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp),
-                )
-            }
         }
     }
 }
@@ -389,14 +409,16 @@ private fun PromptBar(
     onPromptChanged: (String) -> Unit,
     onRun: () -> Unit,
     onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
         OutlinedTextField(
             value = prompt,
             onValueChange = onPromptChanged,
             label = { Text("Ask the model...") },
-            enabled = !isRunning,
             modifier = Modifier.fillMaxWidth(),
+            minLines = 1,
+            maxLines = 4,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onRun, enabled = !isRunning && prompt.isNotBlank()) {
@@ -461,7 +483,6 @@ private fun PlaygroundPreviewWithTrace() {
                 PlaygroundUiState(
                     availableProbes = persistentListOf(probe),
                     activeProbes = persistentListOf(probe),
-                    prompt = "",
                     trace = trace,
                     availableModels = persistentListOf(model),
                     target = PlaygroundTarget.Local(model),

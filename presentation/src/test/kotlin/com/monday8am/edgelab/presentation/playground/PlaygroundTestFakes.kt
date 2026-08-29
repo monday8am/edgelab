@@ -15,11 +15,9 @@ import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonObject
 
-/**
- * Stands in for both legs; real behaviour is covered in `:agent` (cloud loop, litert-lm recording).
- */
 internal class FakePlaygroundBackend : PlaygroundBackend {
     var initializeCallCount = 0
         private set
@@ -30,11 +28,9 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
     var closeCallCount = 0
         private set
 
-    /** Tools handed to the most recent [run]. */
     var lastTools: List<ToolSpecification> = emptyList()
         private set
 
-    /** Mock responses handed to the most recent [run]. */
     var lastMockResponses: Map<String, String> = emptyMap()
         private set
 
@@ -66,7 +62,6 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
     }
 }
 
-/** Records which targets the ViewModel asked for, and hands back one backend per target. */
 internal class RecordingBackendFactory(
     private val backend: FakePlaygroundBackend = FakePlaygroundBackend()
 ) : PlaygroundBackendFactory {
@@ -97,26 +92,31 @@ internal class FakeProbeRepository(
     }
 }
 
-internal class FakeModelRepository(repositoryModels: List<ModelConfiguration>) : ModelRepository {
-    private val storedModels: List<ModelConfiguration> = repositoryModels
+internal class FakeModelRepository(private val repositoryModels: List<ModelConfiguration>) :
+    ModelRepository {
+    private val modelsFlow = MutableStateFlow<List<ModelConfiguration>>(emptyList())
 
-    override val models: StateFlow<List<ModelConfiguration>>
-        get() = MutableStateFlow(storedModels)
+    override val models: StateFlow<List<ModelConfiguration>> = modelsFlow.asStateFlow()
 
-    override val loadingState: StateFlow<RepositoryState>
-        get() = MutableStateFlow(RepositoryState.Success(storedModels))
+    override val loadingState: StateFlow<RepositoryState> =
+        MutableStateFlow(RepositoryState.Success(repositoryModels))
 
-    override fun refreshModels() {}
+    var refreshCallCount = 0
+        private set
 
-    override fun findById(modelId: String): ModelConfiguration? = storedModels.find {
-        it.modelId == modelId
+    /** Mirrors [com.monday8am.edgelab.data.model.ModelRepositoryImpl]: empty until refreshed. */
+    override fun refreshModels() {
+        refreshCallCount++
+        modelsFlow.value = repositoryModels
     }
 
-    override fun getAllModels(): List<ModelConfiguration> = storedModels
+    override fun findById(modelId: String): ModelConfiguration? =
+        modelsFlow.value.find { it.modelId == modelId }
 
-    override fun getByFamily(family: String): List<ModelConfiguration> = storedModels.filter {
-        it.modelFamily.equals(family, ignoreCase = true)
-    }
+    override fun getAllModels(): List<ModelConfiguration> = modelsFlow.value
+
+    override fun getByFamily(family: String): List<ModelConfiguration> =
+        modelsFlow.value.filter { it.modelFamily.equals(family, ignoreCase = true) }
 
     override fun updateModel(
         modelId: String,
