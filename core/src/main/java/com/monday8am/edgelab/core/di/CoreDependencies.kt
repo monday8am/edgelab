@@ -6,7 +6,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.monday8am.edgelab.agent.core.LocalInferenceEngine
 import com.monday8am.edgelab.agent.playground.CloudPlaygroundBackend
+import com.monday8am.edgelab.agent.playground.LlmToolOutputJudge
 import com.monday8am.edgelab.agent.playground.LocalPlaygroundBackend
+import com.monday8am.edgelab.agent.playground.ToolOutputJudge
 import com.monday8am.edgelab.core.download.ModelDownloadManagerImpl
 import com.monday8am.edgelab.core.inference.FirebaseAiChatFactory
 import com.monday8am.edgelab.core.inference.LiteRTLmInferenceEngineImpl
@@ -57,6 +59,17 @@ object CoreDependencies {
                     model = target.model,
                     modelPath = downloadManager.getModelPath(target.model.bundleFilename),
                 )
+        }
+    }
+
+    /**
+     * Second-opinion judge per target. Cloud gets a semantic judge on the same Gemini leg; local
+     * gets none — sending a pure-local run's prompt to the cloud would leak on-device content.
+     */
+    fun createPlaygroundJudgeFactory(): (PlaygroundTarget) -> ToolOutputJudge? = { target ->
+        when (target) {
+            PlaygroundTarget.Cloud -> LlmToolOutputJudge(FirebaseAiChatFactory())
+            is PlaygroundTarget.Local -> null
         }
     }
 

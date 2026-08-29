@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.monday8am.edgelab.agent.playground.ToolOutputJudge
 import com.monday8am.edgelab.core.di.CoreDependencies
 import com.monday8am.edgelab.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.edgelab.core.storage.DataStoreModelDataSource
@@ -27,6 +28,7 @@ import com.monday8am.edgelab.explorer.BuildConfig
 import com.monday8am.edgelab.explorer.MainActivity
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import com.monday8am.edgelab.presentation.playground.PlaygroundBackendFactory
+import com.monday8am.edgelab.presentation.playground.PlaygroundTarget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -104,6 +106,10 @@ object ServiceLocator {
 
     val playgroundBackendFactory: PlaygroundBackendFactory by lazy {
         CoreDependencies.createPlaygroundBackendFactory(modelDownloadManager)
+    }
+
+    val playgroundJudgeFactory: (PlaygroundTarget) -> ToolOutputJudge? by lazy {
+        CoreDependencies.createPlaygroundJudgeFactory()
     }
 
     val json = Json {
