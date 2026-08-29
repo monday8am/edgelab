@@ -30,18 +30,18 @@ fun interface ToolOutputJudge { suspend fun isUsed(mock: String, text: String): 
 ```
 
 - `HeuristicToolOutputJudge` — wraps `ToolOutputUsage` (+ the `JsonLiteral` date-string fix).
-- `LlmToolOutputJudge(chatFactory: CloudChatFactory)` — YES/NO classifier prompt, fresh session per check; `CloudChatFactory` stays provider-free in `:agent`; Firebase adapter in `:core`.
+- `LlmToolOutputJudge(chatFactory: CloudChatFactory)` — verdict via a structured `report_usage(used)` function call, YES/NO text fallback; `CloudChatFactory` stays provider-free in `:agent`; Firebase adapter in `:core`.
 
 Composite decision lives in the caller, not a wrapper class — the branch is one `if`:
 ```kotlin
 val verdict = if (heuristic.isUsed(mock, text)) USED else APPARENTLY_IGNORED // then async LLM
 ```
 
-Prompt (single-shot — open a fresh session, never reuse the conversation chat; reply contract is YES/NO only):
+Prompt (single-shot — open a fresh session, never reuse the conversation chat; the model calls `report_usage` with its verdict):
 ```
-You are a strict judge. Tool output: {mock}. Assistant answer: {text}.
-Did the answer use the tool output, even paraphrased, rounded, or reformatted?
-Reply YES or NO only.
+You are a strict judge. Tool output(s): {mock}. Assistant answer: {text}.
+Did the answer use the tool output(s), even paraphrased, rounded, or reformatted?
+Call report_usage with your verdict.
 ```
 
 ### 2. `PlaygroundViewModelImpl` — owns the async second opinion

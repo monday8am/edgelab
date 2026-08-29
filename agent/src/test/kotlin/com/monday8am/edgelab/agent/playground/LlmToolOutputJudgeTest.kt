@@ -42,11 +42,38 @@ class LlmToolOutputJudgeTest {
     }
 
     @Test
-    fun `a judge that asks for a tool abstains`() = runTest {
-        val withCall = CloudReply("", listOf(CloudFunctionCall("get_weather", emptyMap())))
+    fun `a report_usage call with used true counts as used`() = runTest {
+        val withCall =
+            CloudReply("", listOf(CloudFunctionCall("report_usage", mapOf("used" to true))))
         val judge = LlmToolOutputJudge(CloudChatFactory { SingleReplyChat(withCall) })
 
-        assertNull(judge.isUsed(mock, answer))
+        assertEquals(true, judge.isUsed(mock, answer))
+    }
+
+    @Test
+    fun `a report_usage call with used false counts as ignored`() = runTest {
+        val withCall =
+            CloudReply("", listOf(CloudFunctionCall("report_usage", mapOf("used" to false))))
+        val judge = LlmToolOutputJudge(CloudChatFactory { SingleReplyChat(withCall) })
+
+        assertEquals(false, judge.isUsed(mock, answer))
+    }
+
+    @Test
+    fun `a call without the used argument falls back to the text reply`() = runTest {
+        val withCall = CloudReply("YES", listOf(CloudFunctionCall("report_usage", emptyMap())))
+        val judge = LlmToolOutputJudge(CloudChatFactory { SingleReplyChat(withCall) })
+
+        assertEquals(true, judge.isUsed(mock, answer))
+    }
+
+    @Test
+    fun `a structured call takes precedence over the text reply`() = runTest {
+        val withCall =
+            CloudReply("NO", listOf(CloudFunctionCall("report_usage", mapOf("used" to true))))
+        val judge = LlmToolOutputJudge(CloudChatFactory { SingleReplyChat(withCall) })
+
+        assertEquals(true, judge.isUsed(mock, answer))
     }
 
     @Test
