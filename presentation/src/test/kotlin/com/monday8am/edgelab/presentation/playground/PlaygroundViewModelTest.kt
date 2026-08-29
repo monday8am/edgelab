@@ -68,7 +68,6 @@ class PlaygroundViewModelTest {
 
     @Test
     fun `RunPrompt should work with no model downloaded at all`() = runTest {
-        // The whole point of the cloud onboarding leg: zero download, straight to a Trace.
         downloadManager = FakeModelDownloadManagerForPlayground(downloadedFilenames = emptySet())
         val viewModel = createViewModel()
         advanceUntilIdle()
@@ -139,7 +138,6 @@ class PlaygroundViewModelTest {
             listOf(PlaygroundTarget.Cloud, PlaygroundTarget.Local(TEST_MODEL)),
             backendFactory.requestedTargets,
         )
-        // Switching away must release the backend that was in use.
         assertEquals(1, backend.closeCallCount)
         viewModel.dispose()
     }

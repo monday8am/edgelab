@@ -66,7 +66,6 @@ sealed interface PlaygroundTarget {
     data class Local(val model: ModelConfiguration) : PlaygroundTarget
 }
 
-/** Implemented in `:core`, which owns both providers. */
 fun interface PlaygroundBackendFactory {
     fun create(target: PlaygroundTarget): PlaygroundBackend
 }
@@ -76,7 +75,6 @@ data class PlaygroundUiState(
     val activeProbes: ImmutableList<ToolSpecification> = persistentListOf(),
     val trace: ImmutableList<TraceEntry> = persistentListOf(),
     val target: PlaygroundTarget = PlaygroundTarget.Cloud,
-    /** Downloaded `.litertlm` models the dev can switch to; empty until they download one. */
     val availableModels: ImmutableList<ModelConfiguration> = persistentListOf(),
     val isRunning: Boolean = false,
     val error: String? = null,

@@ -18,9 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonObject
 
-/**
- * Stands in for both legs; real behaviour is covered in `:agent` (cloud loop, litert-lm recording).
- */
 internal class FakePlaygroundBackend : PlaygroundBackend {
     var initializeCallCount = 0
         private set
@@ -31,11 +28,9 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
     var closeCallCount = 0
         private set
 
-    /** Tools handed to the most recent [run]. */
     var lastTools: List<ToolSpecification> = emptyList()
         private set
 
-    /** Mock responses handed to the most recent [run]. */
     var lastMockResponses: Map<String, String> = emptyMap()
         private set
 
@@ -67,7 +62,6 @@ internal class FakePlaygroundBackend : PlaygroundBackend {
     }
 }
 
-/** Records which targets the ViewModel asked for, and hands back one backend per target. */
 internal class RecordingBackendFactory(
     private val backend: FakePlaygroundBackend = FakePlaygroundBackend()
 ) : PlaygroundBackendFactory {
