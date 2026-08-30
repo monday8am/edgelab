@@ -4,11 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class TextualToolCallParserTest {
+class Lfm2ToolCallDialectTest {
 
     @Test
     fun `parses a no-argument call`() {
-        val calls = parseTextualToolCalls("<|tool_call_start|>[get_time()]<|tool_call_end|>")
+        val calls = Lfm2ToolCallDialect.recover("<|tool_call_start|>[get_time()]<|tool_call_end|>")
 
         assertEquals(1, calls.size)
         assertEquals("get_time", calls[0].name)
@@ -18,7 +18,7 @@ class TextualToolCallParserTest {
     @Test
     fun `parses typed arguments`() {
         val calls =
-            parseTextualToolCalls(
+            Lfm2ToolCallDialect.recover(
                 """<|tool_call_start|>[get_weather(city="Madrid", days=3, metric=True, note=None)]<|tool_call_end|>"""
             )
 
@@ -32,7 +32,7 @@ class TextualToolCallParserTest {
     @Test
     fun `keeps commas inside quoted values`() {
         val calls =
-            parseTextualToolCalls(
+            Lfm2ToolCallDialect.recover(
                 """<|tool_call_start|>[search(query="pizza, pasta", limit=2)]<|tool_call_end|>"""
             )
 
@@ -42,7 +42,7 @@ class TextualToolCallParserTest {
     @Test
     fun `parses list arguments`() {
         val calls =
-            parseTextualToolCalls(
+            Lfm2ToolCallDialect.recover(
                 """<|tool_call_start|>[plan(stops=["a", "b"], count=2)]<|tool_call_end|>"""
             )
 
@@ -52,7 +52,7 @@ class TextualToolCallParserTest {
     @Test
     fun `parses several calls in one block`() {
         val calls =
-            parseTextualToolCalls(
+            Lfm2ToolCallDialect.recover(
                 """<|tool_call_start|>[get_time(), get_weather(city="Madrid")]<|tool_call_end|>"""
             )
 
@@ -61,13 +61,13 @@ class TextualToolCallParserTest {
 
     @Test
     fun `ignores plain text`() {
-        assertTrue(parseTextualToolCalls("It is 11:20 in Madrid.").isEmpty())
+        assertTrue(Lfm2ToolCallDialect.recover("It is 11:20 in Madrid.").isEmpty())
     }
 
     @Test
     fun `strips the markup from surrounding prose`() {
         val raw = "Sure.\n<|tool_call_start|>[get_time()]<|tool_call_end|>"
 
-        assertEquals("Sure.", stripToolCallBlocks(raw))
+        assertEquals("Sure.", Lfm2ToolCallDialect.strip(raw))
     }
 }

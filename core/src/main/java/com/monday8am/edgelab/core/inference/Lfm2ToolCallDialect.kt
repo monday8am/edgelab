@@ -7,12 +7,6 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** A tool call recovered from the model's raw text, with arguments already normalised to JSON. */
-internal data class TextualToolCall(val name: String, val argumentsJson: String)
-
-internal const val TOOL_CALL_START = "<|tool_call_start|>"
-internal const val TOOL_CALL_END = "<|tool_call_end|>"
-
 private val TOOL_CALL_BLOCK =
     Regex("""<\|tool_call_start\|>(.*?)<\|tool_call_end\|>""", RegexOption.DOT_MATCHES_ALL)
 
@@ -20,19 +14,22 @@ private val CALL_SIGNATURE =
     Regex("""^([A-Za-z_][A-Za-z0-9_.]*)\s*\((.*)\)$""", RegexOption.DOT_MATCHES_ALL)
 
 /**
- * Recovers tool calls that the runtime handed back as plain text instead of a structured
- * `tool_calls` block, e.g. `<|tool_call_start|>[get_weather(city="Madrid")]<|tool_call_end|>`.
+ * Reads LFM2's tool-call format: a Python list of calls between `<|tool_call_start|>` and
+ * `<|tool_call_end|>`, e.g. `<|tool_call_start|>[get_weather(city="Madrid")]<|tool_call_end|>`.
  *
- * Gemma emits Python-style call syntax, so argument values are parsed as Python/JSON literals
- * (`True`/`None` included) rather than with a JSON parser.
+ * The payload is Pythonic, not JSON — `True`, `None` and single quotes are all legal — so argument
+ * values go through a literal parser rather than `Json.parseToJsonElement`.
+ *
+ * This exists because litert-lm cannot parse LFM2 tool calls itself; see [toolCallDialectFor].
  */
-internal fun parseTextualToolCalls(raw: String): List<TextualToolCall> =
-    TOOL_CALL_BLOCK.findAll(raw)
-        .flatMap { match -> parseCallList(match.groupValues[1].trim()).asSequence() }
-        .toList()
+internal object Lfm2ToolCallDialect : ToolCallDialect {
+    override fun recover(raw: String): List<TextualToolCall> =
+        TOOL_CALL_BLOCK.findAll(raw)
+            .flatMap { match -> parseCallList(match.groupValues[1].trim()).asSequence() }
+            .toList()
 
-/** Strips the tool-call markup so a partial fallback never leaks special tokens to the UI. */
-internal fun stripToolCallBlocks(raw: String): String = TOOL_CALL_BLOCK.replace(raw, "").trim()
+    override fun strip(raw: String): String = TOOL_CALL_BLOCK.replace(raw, "").trim()
+}
 
 private fun parseCallList(block: String): List<TextualToolCall> {
     val body =

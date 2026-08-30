@@ -118,6 +118,9 @@ internal object ModelFilenameParser {
             "deepseek",
             "fastvlm",
             "functiongemma",
+            // Listed explicitly so tool-call dialect selection keys off a deliberate value; the
+            // fallback below would also yield "lfm2.5", but only by accident of the repo name.
+            "lfm2",
         )
 
     /** Extracts model family from the Hugging Face model ID. */

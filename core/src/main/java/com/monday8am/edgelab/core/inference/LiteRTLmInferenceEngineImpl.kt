@@ -8,8 +8,6 @@ import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.ExperimentalApi
-import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.OpenApiTool
@@ -44,7 +42,9 @@ private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
     val modelConfig: ModelConfiguration,
-    /** Registered OpenAPI tools by name, used only by the textual tool-call fallback. */
+    /** How to recover tool calls this model family emits as text; a no-op for most families. */
+    val dialect: ToolCallDialect,
+    /** Registered OpenAPI tools by name, used only by [dialect] recovery. */
     var toolsByName: Map<String, OpenApiTool> = emptyMap(),
 )
 
@@ -52,7 +52,6 @@ private data class LlmModelInstance(
 private const val MAX_FALLBACK_TOOL_ROUNDS = 5
 
 /** LiteRT-LM implementation with native tool calling support. */
-@OptIn(ExperimentalApi::class)
 class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = Dispatchers.IO) :
     LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
@@ -70,11 +69,6 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
                 if (!File(modelPath).exists()) {
                     throw IllegalStateException("Model file not found at path: $modelPath")
                 }
-
-                // Without this the runtime decodes tool calls as plain text
-                // (`<|tool_call_start|>[get_time()]<|tool_call_end|>`) and never emits the
-                // structured `tool_calls` block that drives ToolManager, so handlers never run.
-                ExperimentalFlags.enableConversationConstrainedDecoding = true
 
                 val engineConfig =
                     EngineConfig(
@@ -109,6 +103,7 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
                         engine = engine,
                         conversation = conversation,
                         modelConfig = modelConfig,
+                        dialect = toolCallDialectFor(modelConfig.modelFamily),
                     )
 
                 Result.success(Unit)
@@ -196,24 +191,25 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
     }
 
     /**
-     * Runs any tool call the runtime failed to parse into a structured `tool_calls` block, feeds
-     * the results back, and returns the model's follow-up answer. A no-op on the happy path, where
-     * litert-lm has already invoked the handlers itself.
+     * Runs any tool call the model emitted as text, feeds the results back, and returns its
+     * follow-up answer. Costs nothing for families litert-lm parses itself: [RuntimeHandled]
+     * reports no calls, so this falls straight through on the first check.
      */
     private suspend fun resolveTextualToolCalls(instance: LlmModelInstance, raw: String): String {
+        val dialect = instance.dialect
         var current = raw
         repeat(MAX_FALLBACK_TOOL_ROUNDS) {
-            val calls = parseTextualToolCalls(current)
+            val calls = dialect.recover(current)
             if (calls.isEmpty()) return current
 
             val responses = executeTextualToolCalls(instance, calls)
-            if (responses.isEmpty()) return stripToolCallBlocks(current)
+            if (responses.isEmpty()) return dialect.strip(current)
 
             current =
                 instance.conversation.sendMessageWithCallback(Message.tool(Contents.of(responses)))
         }
         Logger.w("LocalInferenceEngine") { "🔁 Tool-call fallback hit its round limit." }
-        return stripToolCallBlocks(current)
+        return dialect.strip(current)
     }
 
     /** Invokes the registered handlers for [calls], skipping any that are unknown or that throw. */
@@ -280,9 +276,6 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
                             temperature = instance.modelConfig.defaultTemperature.toDouble(),
                         ),
                 )
-            Logger.i("LocalInferenceEngine") {
-                "\uD83D\uDCAC Reset conversation with ${tools.size} tools"
-            }
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
     }
