@@ -43,7 +43,7 @@ internal fun ModelSelectorHeader(
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onManageAuthorsClick: () -> Unit = {}
+    onManageAuthorsClick: () -> Unit = {},
 ) {
     Column(modifier = modifier) {
         // Action buttons row at the top
@@ -64,8 +64,7 @@ internal fun ModelSelectorHeader(
             // User login/logout button
             IconButton(onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }) {
                 Icon(
-                    imageVector =
-                        if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
+                    imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
                     contentDescription =
                         if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
                     tint =
@@ -80,8 +79,7 @@ internal fun ModelSelectorHeader(
                         imageVector =
                             if (isAllExpanded) Icons.Default.UnfoldLess
                             else Icons.Default.UnfoldMore,
-                        contentDescription =
-                            if (isAllExpanded) "Collapse All" else "Expand All",
+                        contentDescription = if (isAllExpanded) "Collapse All" else "Expand All",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }

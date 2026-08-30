@@ -80,9 +80,7 @@ private fun LiveRideScreenContent(
 
         // Top app bar overlay (semi-transparent)
         CenterAlignedTopAppBar(
-            title = {
-                Text(uiState.routeName.ifEmpty { "Loading…" })
-            },
+            title = { Text(uiState.routeName.ifEmpty { "Loading…" }) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
@@ -109,9 +107,7 @@ private fun LiveRideScreenContent(
             )
 
             // Bottom panel: HUD + Chat
-            Column(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-            ) {
+            Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 HudStrip(metrics = uiState.hudMetrics)
                 ChatPanel(
                     chatMessages = uiState.chatMessages,
@@ -193,7 +189,12 @@ private val previewUiState =
         isVoiceRecording = false,
         isProcessing = false,
         playbackState =
-            PlaybackState(isPlaying = true, speedMultiplier = 1f, currentKm = 14.7f, totalKm = 184f),
+            PlaybackState(
+                isPlaying = true,
+                speedMultiplier = 1f,
+                currentKm = 14.7f,
+                totalKm = 184f,
+            ),
     )
 
 @Preview(showBackground = true, name = "Loading")
@@ -278,7 +279,7 @@ private fun PlaybackControlsPausedPreview() {
             uiState =
                 previewUiState.copy(
                     playbackState =
-                        previewUiState.playbackState.copy(isPlaying = false, speedMultiplier = 4f),
+                        previewUiState.playbackState.copy(isPlaying = false, speedMultiplier = 4f)
                 ),
             onAction = {},
         )

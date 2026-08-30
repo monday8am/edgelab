@@ -44,12 +44,14 @@ fun MapLibreMapView(
     pois: ImmutableList<PoiMarker>,
     modifier: Modifier = Modifier,
 ) {
-    val cameraState = rememberCameraState(
-        firstPosition = CameraPosition(
-            target = Position(riderPosition.longitude, riderPosition.latitude),
-            zoom = 12.0,
+    val cameraState =
+        rememberCameraState(
+            firstPosition =
+                CameraPosition(
+                    target = Position(riderPosition.longitude, riderPosition.latitude),
+                    zoom = 12.0,
+                )
         )
-    )
 
     LaunchedEffect(riderPosition) {
         cameraState.animateTo(
@@ -64,27 +66,37 @@ fun MapLibreMapView(
         baseStyle = BaseStyle.Uri(MAP_STYLE_URL),
         cameraState = cameraState,
     ) {
-        val routeSource = rememberGeoJsonSource(
-            data = GeoJsonData.JsonString(routePolyline.toLineCollectionJson()),
-        )
-        val completedSource = rememberGeoJsonSource(
-            data = GeoJsonData.JsonString(completedPolyline.toLineCollectionJson()),
-        )
-        val riderSource = rememberGeoJsonSource(
-            data = GeoJsonData.JsonString(
-                FeatureCollection(
-                    listOf(
-                        Feature(
-                            geometry = Point(Position(riderPosition.longitude, riderPosition.latitude)),
-                            properties = emptyMap<String, JsonElement>(),
-                        )
+        val routeSource =
+            rememberGeoJsonSource(
+                data = GeoJsonData.JsonString(routePolyline.toLineCollectionJson())
+            )
+        val completedSource =
+            rememberGeoJsonSource(
+                data = GeoJsonData.JsonString(completedPolyline.toLineCollectionJson())
+            )
+        val riderSource =
+            rememberGeoJsonSource(
+                data =
+                    GeoJsonData.JsonString(
+                        FeatureCollection(
+                                listOf(
+                                    Feature(
+                                        geometry =
+                                            Point(
+                                                Position(
+                                                    riderPosition.longitude,
+                                                    riderPosition.latitude,
+                                                )
+                                            ),
+                                        properties = emptyMap<String, JsonElement>(),
+                                    )
+                                )
+                            )
+                            .toJson()
                     )
-                ).toJson()
-            ),
-        )
-        val poisSource = rememberGeoJsonSource(
-            data = GeoJsonData.JsonString(pois.toPoiCollectionJson()),
-        )
+            )
+        val poisSource =
+            rememberGeoJsonSource(data = GeoJsonData.JsonString(pois.toPoiCollectionJson()))
 
         // Full route (dimmed — shows the route ahead)
         LineLayer(
@@ -133,8 +145,9 @@ private fun List<RideLatLng>.toLineCollectionJson(): String {
     if (size < 2) return featureCollectionOf().toJson()
     val line = LineString(map { Position(it.longitude, it.latitude) })
     return FeatureCollection(
-        listOf(Feature(geometry = line, properties = emptyMap<String, JsonElement>()))
-    ).toJson()
+            listOf(Feature(geometry = line, properties = emptyMap<String, JsonElement>()))
+        )
+        .toJson()
 }
 
 private fun List<PoiMarker>.toPoiCollectionJson(): String {

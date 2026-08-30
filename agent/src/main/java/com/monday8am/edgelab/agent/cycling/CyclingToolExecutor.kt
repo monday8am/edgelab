@@ -74,18 +74,17 @@ class CyclingToolExecutor(
         }
     }
 
-    private fun getRideStatus(ctx: RideContext): String =
-        buildJsonObject {
-                put("speed_kmh", ctx.speedKmh)
-                put("distance_km", ctx.distanceTravelledKm)
-                put("elapsed_ms", ctx.elapsedMs)
-                put("total_distance_km", ctx.totalDistanceKm)
-                if (ctx.totalDistanceKm > 0) {
-                    put("progress_pct", ctx.distanceTravelledKm / ctx.totalDistanceKm * 100f)
-                }
-                ctx.power?.let { put("power_watts", it) }
-            }
-            .toString()
+    private fun getRideStatus(ctx: RideContext): String = buildJsonObject {
+        put("speed_kmh", ctx.speedKmh)
+        put("distance_km", ctx.distanceTravelledKm)
+        put("elapsed_ms", ctx.elapsedMs)
+        put("total_distance_km", ctx.totalDistanceKm)
+        if (ctx.totalDistanceKm > 0) {
+            put("progress_pct", ctx.distanceTravelledKm / ctx.totalDistanceKm * 100f)
+        }
+        ctx.power?.let { put("power_watts", it) }
+    }
+        .toString()
 
     private fun getSegmentAhead(ctx: RideContext): String {
         val segments =
@@ -106,61 +105,61 @@ class CyclingToolExecutor(
                 .minByOrNull { it.fromIndex }
 
         return buildJsonObject {
-                currentNamed?.let {
-                    put(
-                        "current_named_sector",
-                        buildJsonObject {
-                            put("name", it.name)
-                            put("surface", it.surface)
-                            put("distance_m", it.distanceM)
-                            put("elevation_up_m", it.elevationUpM)
-                        },
-                    )
-                }
-                currentGravel?.let {
-                    put(
-                        "current_gravel_sector",
-                        buildJsonObject {
-                            put("surface", it.surface)
-                            put("distance_m", it.distanceM)
-                            put("elevation_up_m", it.elevationUpM)
-                        },
-                    )
-                }
-                nextNamed?.let {
-                    put(
-                        "next_named_sector",
-                        buildJsonObject {
-                            put("name", it.name)
-                            put("surface", it.surface)
-                            put("distance_m", it.distanceM)
-                            put("elevation_up_m", it.elevationUpM)
-                            put("km_from_start", it.kmFromStart)
-                            put("km_ahead", it.kmFromStart - ctx.distanceTravelledKm)
-                        },
-                    )
-                }
-                nextGravel?.let {
-                    put(
-                        "next_gravel_sector",
-                        buildJsonObject {
-                            put("surface", it.surface)
-                            put("distance_m", it.distanceM)
-                            put("elevation_up_m", it.elevationUpM)
-                            put("km_from_start", it.kmFromStart)
-                            put("km_ahead", it.kmFromStart - ctx.distanceTravelledKm)
-                        },
-                    )
-                }
-                if (
-                    currentNamed == null &&
-                        currentGravel == null &&
-                        nextNamed == null &&
-                        nextGravel == null
-                ) {
-                    put("message", "No more segments ahead")
-                }
+            currentNamed?.let {
+                put(
+                    "current_named_sector",
+                    buildJsonObject {
+                        put("name", it.name)
+                        put("surface", it.surface)
+                        put("distance_m", it.distanceM)
+                        put("elevation_up_m", it.elevationUpM)
+                    },
+                )
             }
+            currentGravel?.let {
+                put(
+                    "current_gravel_sector",
+                    buildJsonObject {
+                        put("surface", it.surface)
+                        put("distance_m", it.distanceM)
+                        put("elevation_up_m", it.elevationUpM)
+                    },
+                )
+            }
+            nextNamed?.let {
+                put(
+                    "next_named_sector",
+                    buildJsonObject {
+                        put("name", it.name)
+                        put("surface", it.surface)
+                        put("distance_m", it.distanceM)
+                        put("elevation_up_m", it.elevationUpM)
+                        put("km_from_start", it.kmFromStart)
+                        put("km_ahead", it.kmFromStart - ctx.distanceTravelledKm)
+                    },
+                )
+            }
+            nextGravel?.let {
+                put(
+                    "next_gravel_sector",
+                    buildJsonObject {
+                        put("surface", it.surface)
+                        put("distance_m", it.distanceM)
+                        put("elevation_up_m", it.elevationUpM)
+                        put("km_from_start", it.kmFromStart)
+                        put("km_ahead", it.kmFromStart - ctx.distanceTravelledKm)
+                    },
+                )
+            }
+            if (
+                currentNamed == null &&
+                    currentGravel == null &&
+                    nextNamed == null &&
+                    nextGravel == null
+            ) {
+                put("message", "No more segments ahead")
+            }
+        }
             .toString()
     }
 
@@ -174,29 +173,29 @@ class CyclingToolExecutor(
         val hours = weather.hourly.filter { it.hour >= currentHour }.take(hoursAhead + 1)
 
         return buildJsonObject {
-                put("location", weather.location)
-                put("summary", weather.summary)
-                put(
-                    "hourly",
-                    buildJsonArray {
-                        hours.forEach { h ->
-                            add(
-                                buildJsonObject {
-                                    put("hour", h.hour)
-                                    put("temp_c", h.tempC)
-                                    put("feels_like_c", h.feelsLikeC)
-                                    put("wind_kph", h.windKph)
-                                    put("wind_dir", h.windDir)
-                                    put("humidity_pct", h.humidityPct)
-                                    put("condition", h.condition)
-                                    put("precip_mm", h.precipMm)
-                                    put("uv_index", h.uvIndex)
-                                }
-                            )
-                        }
-                    },
-                )
-            }
+            put("location", weather.location)
+            put("summary", weather.summary)
+            put(
+                "hourly",
+                buildJsonArray {
+                    hours.forEach { h ->
+                        add(
+                            buildJsonObject {
+                                put("hour", h.hour)
+                                put("temp_c", h.tempC)
+                                put("feels_like_c", h.feelsLikeC)
+                                put("wind_kph", h.windKph)
+                                put("wind_dir", h.windDir)
+                                put("humidity_pct", h.humidityPct)
+                                put("condition", h.condition)
+                                put("precip_mm", h.precipMm)
+                                put("uv_index", h.uvIndex)
+                            }
+                        )
+                    }
+                },
+            )
+        }
             .toString()
     }
 
@@ -208,28 +207,28 @@ class CyclingToolExecutor(
         val upcoming = segments.gravelSectors.filter { it.fromIndex > ctx.routePointIndex }.take(3)
 
         return buildJsonObject {
-                put(
-                    "note",
-                    "Official Strade Bianche route. Gravel sectors are integral to the race course.",
-                )
-                put(
-                    "upcoming_challenging_sectors",
-                    buildJsonArray {
-                        upcoming.forEach { g ->
-                            add(
-                                buildJsonObject {
-                                    put("surface", g.surface)
-                                    put("distance_m", g.distanceM)
-                                    put("elevation_up_m", g.elevationUpM)
-                                    put("km_from_start", g.kmFromStart)
-                                    put("km_ahead", g.kmFromStart - ctx.distanceTravelledKm)
-                                    put("has_paved_alternative", false)
-                                }
-                            )
-                        }
-                    },
-                )
-            }
+            put(
+                "note",
+                "Official Strade Bianche route. Gravel sectors are integral to the race course.",
+            )
+            put(
+                "upcoming_challenging_sectors",
+                buildJsonArray {
+                    upcoming.forEach { g ->
+                        add(
+                            buildJsonObject {
+                                put("surface", g.surface)
+                                put("distance_m", g.distanceM)
+                                put("elevation_up_m", g.elevationUpM)
+                                put("km_from_start", g.kmFromStart)
+                                put("km_ahead", g.kmFromStart - ctx.distanceTravelledKm)
+                                put("has_paved_alternative", false)
+                            }
+                        )
+                    }
+                },
+            )
+        }
             .toString()
     }
 
@@ -243,44 +242,43 @@ class CyclingToolExecutor(
         }
 
         return buildJsonObject {
-                category?.let { put("category_filter", it) }
-                put("radius_km", radiusKm)
-                put(
-                    "pois",
-                    buildJsonArray {
-                        filtered.forEach { poi ->
-                            add(
-                                buildJsonObject {
-                                    put("name", poi.name)
-                                    put("category", poi.category)
-                                    put("km_from_start", poi.kmFromStart)
-                                    put("km_ahead", poi.kmFromStart - ctx.distanceTravelledKm)
-                                }
-                            )
-                        }
-                    },
-                )
-            }
+            category?.let { put("category_filter", it) }
+            put("radius_km", radiusKm)
+            put(
+                "pois",
+                buildJsonArray {
+                    filtered.forEach { poi ->
+                        add(
+                            buildJsonObject {
+                                put("name", poi.name)
+                                put("category", poi.category)
+                                put("km_from_start", poi.kmFromStart)
+                                put("km_ahead", poi.kmFromStart - ctx.distanceTravelledKm)
+                            }
+                        )
+                    }
+                },
+            )
+        }
             .toString()
     }
 
-    private fun getRiderProfile(): String =
-        buildJsonObject {
-                put("ftp_watts", 250)
-                put("weight_kg", 70)
-                put(
-                    "zones",
-                    buildJsonObject {
-                        put("z1_recovery", "< 140W")
-                        put("z2_endurance", "140-188W")
-                        put("z3_tempo", "188-213W")
-                        put("z4_threshold", "213-250W")
-                        put("z5_vo2max", "> 250W")
-                    },
-                )
-                put("note", "Default profile. Customize in rider settings.")
-            }
-            .toString()
+    private fun getRiderProfile(): String = buildJsonObject {
+        put("ftp_watts", 250)
+        put("weight_kg", 70)
+        put(
+            "zones",
+            buildJsonObject {
+                put("z1_recovery", "< 140W")
+                put("z2_endurance", "140-188W")
+                put("z3_tempo", "188-213W")
+                put("z4_threshold", "213-250W")
+                put("z5_vo2max", "> 250W")
+            },
+        )
+        put("note", "Default profile. Customize in rider settings.")
+    }
+        .toString()
 
     private data class PoiInfo(val name: String, val category: String, val kmFromStart: Float)
 

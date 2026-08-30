@@ -43,10 +43,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.core.permissions.NotificationPermissionHandler
 import com.monday8am.edgelab.copilot.Dependencies
 import com.monday8am.edgelab.copilot.Dependencies.oAuthManager
 import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
+import com.monday8am.edgelab.core.permissions.NotificationPermissionHandler
 import com.monday8am.edgelab.presentation.onboard.DownloadStatus
 import com.monday8am.edgelab.presentation.onboard.ModelInfo
 import com.monday8am.edgelab.presentation.onboard.OnboardViewModelImpl
@@ -57,15 +57,14 @@ import kotlinx.collections.immutable.persistentListOf
 @Composable
 fun OnboardScreen(
     onNavigateToSetup: () -> Unit,
-    viewModel: AndroidOnboardViewModel =
-        viewModel {
-            AndroidOnboardViewModel(
-                OnboardViewModelImpl(
-                    modelDownloadManager = Dependencies.modelDownloadManager,
-                    authRepository = Dependencies.authRepository,
-                )
+    viewModel: AndroidOnboardViewModel = viewModel {
+        AndroidOnboardViewModel(
+            OnboardViewModelImpl(
+                modelDownloadManager = Dependencies.modelDownloadManager,
+                authRepository = Dependencies.authRepository,
             )
-        },
+        )
+    },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -83,9 +82,8 @@ fun OnboardScreen(
         )
     }
     val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
+            isGranted ->
             permissionHandler.onPermissionResult(isGranted)
         }
     DisposableEffect(permissionLauncher) {
@@ -129,8 +127,7 @@ private fun OnboardScreenContent(
     onStartOAuth: () -> Unit = {},
 ) {
     Column(
-        modifier =
-            Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Header
@@ -152,9 +149,7 @@ private fun OnboardScreenContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -398,10 +393,7 @@ private fun ModelDownloadCard(
 ) {
     Card(
         modifier = modifier,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -430,7 +422,11 @@ private fun ModelDownloadCard(
                         )
                     }
                     is DownloadStatus.Downloading -> {
-                        TextButton(onClick = { onAction(UiAction.CancelDownload(modelInfo.config.modelId)) }) {
+                        TextButton(
+                            onClick = {
+                                onAction(UiAction.CancelDownload(modelInfo.config.modelId))
+                            }
+                        ) {
                             Text("Cancel")
                         }
                     }
@@ -545,7 +541,7 @@ private fun OnboardScreenPreview() {
                             ),
                         ),
                     isLoggedIn = false,
-                ),
+                )
         )
     }
 }
@@ -591,7 +587,7 @@ private fun OnboardScreenPreviewStep1Complete() {
                             ),
                         ),
                     isLoggedIn = true,
-                ),
+                )
         )
     }
 }

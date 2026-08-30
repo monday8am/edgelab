@@ -33,7 +33,7 @@ class HuggingFaceOAuthManager(
     private val context: Context,
     private val clientId: String,
     private val redirectScheme: String,
-    private val activityClass: Class<out Activity>
+    private val activityClass: Class<out Activity>,
 ) {
     private val serviceConfig =
         AuthorizationServiceConfiguration(
@@ -48,34 +48,39 @@ class HuggingFaceOAuthManager(
     val oAuthResultFlow = _oAuthResultFlow.asSharedFlow()
 
     /**
-     * Launches the OAuth flow using AppAuth's performAuthorizationRequest.
-     * This ensures the request state is preserved and the response is properly formatted.
+     * Launches the OAuth flow using AppAuth's performAuthorizationRequest. This ensures the request
+     * state is preserved and the response is properly formatted.
      */
     fun startAuthorization() {
         val authRequest =
             AuthorizationRequest.Builder(
-                serviceConfig,
-                clientId,
-                ResponseTypeValues.CODE,
-                HuggingFaceOAuthConfig.getRedirectUri(redirectScheme).toUri(),
-            )
+                    serviceConfig,
+                    clientId,
+                    ResponseTypeValues.CODE,
+                    HuggingFaceOAuthConfig.getRedirectUri(redirectScheme).toUri(),
+                )
                 .setScope(HuggingFaceOAuthConfig.SCOPE)
                 .setCodeVerifier(CodeVerifierUtil.generateRandomCodeVerifier())
                 .build()
 
-        Logger.d { "Starting authorization flow for client: $clientId with redirect scheme: $redirectScheme" }
-
-        val intent = Intent(context, activityClass).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(HuggingFaceOAuthConfig.EXTRA_OAUTH_REDIRECT, true) // Still use this marker
+        Logger.d {
+            "Starting authorization flow for client: $clientId with redirect scheme: $redirectScheme"
         }
 
-        val pendingIntent = android.app.PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val intent =
+            Intent(context, activityClass).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(HuggingFaceOAuthConfig.EXTRA_OAUTH_REDIRECT, true) // Still use this marker
+            }
+
+        val pendingIntent =
+            android.app.PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                android.app.PendingIntent.FLAG_MUTABLE or
+                    android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+            )
 
         authService.performAuthorizationRequest(authRequest, pendingIntent)
     }

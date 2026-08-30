@@ -27,21 +27,23 @@ class AssetsProbeRepository(
         isLenient = true
     }
 
-    override fun getToolsAsFlow(): Flow<List<ToolSpecification>> =
-        flow { emit(loadLibrary().tools) }
-            .catch { e ->
-                if (e is CancellationException) throw e
-                logger.e(e) { "Failed to load preset tools" }
-                emit(emptyList())
-            }
+    override fun getToolsAsFlow(): Flow<List<ToolSpecification>> = flow {
+        emit(loadLibrary().tools)
+    }
+        .catch { e ->
+            if (e is CancellationException) throw e
+            logger.e(e) { "Failed to load preset tools" }
+            emit(emptyList())
+        }
 
-    override fun getMockResponsesAsFlow(): Flow<Map<String, String>> =
-        flow { emit(loadLibrary().mockResponses) }
-            .catch { e ->
-                if (e is CancellationException) throw e
-                logger.e(e) { "Failed to load preset mock responses" }
-                emit(emptyMap())
-            }
+    override fun getMockResponsesAsFlow(): Flow<Map<String, String>> = flow {
+        emit(loadLibrary().mockResponses)
+    }
+        .catch { e ->
+            if (e is CancellationException) throw e
+            logger.e(e) { "Failed to load preset mock responses" }
+            emit(emptyMap())
+        }
 
     private fun loadLibrary(): PresetLibrary {
         val resource =

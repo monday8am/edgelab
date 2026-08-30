@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 /**
- * Android wrapper ViewModel for Onboard screen.
- * Delegates to platform-agnostic OnboardViewModel from :presentation module.
- * Follows edgelab pattern with stateIn for lifecycle-aware state collection.
+ * Android wrapper ViewModel for Onboard screen. Delegates to platform-agnostic OnboardViewModel
+ * from :presentation module. Follows edgelab pattern with stateIn for lifecycle-aware state
+ * collection.
  */
 class AndroidOnboardViewModel(private val impl: OnboardViewModel) :
     ViewModel(), OnboardViewModel by impl {

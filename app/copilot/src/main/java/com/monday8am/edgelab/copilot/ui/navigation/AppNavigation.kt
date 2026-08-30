@@ -24,15 +24,14 @@ import kotlinx.coroutines.flow.map
 fun AppNavigation(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    onboardViewModel: AndroidOnboardViewModel =
-        viewModel {
-            AndroidOnboardViewModel(
-                OnboardViewModelImpl(
-                    modelDownloadManager = Dependencies.modelDownloadManager,
-                    authRepository = Dependencies.authRepository,
-                )
+    onboardViewModel: AndroidOnboardViewModel = viewModel {
+        AndroidOnboardViewModel(
+            OnboardViewModelImpl(
+                modelDownloadManager = Dependencies.modelDownloadManager,
+                authRepository = Dependencies.authRepository,
             )
-        },
+        )
+    },
 ) {
 
     val startDestination by
@@ -41,7 +40,8 @@ fun AppNavigation(
                 onboardViewModel.uiState
                     .filter { it.models.isNotEmpty() }
                     .map { state ->
-                        if (state.isLoggedIn && state.models.all { it.isDownloaded }) Route.RideSetup
+                        if (state.isLoggedIn && state.models.all { it.isDownloaded })
+                            Route.RideSetup
                         else Route.Onboard
                     }
                     .first()
@@ -55,9 +55,7 @@ fun AppNavigation(
         modifier = modifier,
     ) {
         composable<Route.Onboard> {
-            OnboardScreen(
-                onNavigateToSetup = { navController.navigate(Route.RideSetup) }
-            )
+            OnboardScreen(onNavigateToSetup = { navController.navigate(Route.RideSetup) })
         }
 
         composable<Route.RideSetup> {

@@ -49,7 +49,9 @@ internal fun ToolBar(
         when (downloadStatus) {
             is DownloadStatus.Downloading,
             is DownloadStatus.Queued -> {
-                Button(onClick = { selectedModelId?.let { onAction(UiAction.CancelDownload(it)) } }) {
+                Button(
+                    onClick = { selectedModelId?.let { onAction(UiAction.CancelDownload(it)) } }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Cancel,
                         contentDescription = "Cancel download",

@@ -62,7 +62,9 @@ class ModelDownloadManagerImpl(
                             val bundleFilename = workInfo.extractBundleFilename() ?: return@forEach
                             deleteModel(bundleFilename)
                         }
-                        else -> { /* no-op */ }
+                        else -> {
+                            /* no-op */
+                        }
                     }
                 }
             }
@@ -113,7 +115,8 @@ class ModelDownloadManagerImpl(
     ): Boolean =
         withContext(dispatcher) {
             if (File(getModelPath(bundleFilename)).exists()) return@withContext true
-            if (findRunningWork(DownloadWorker.getUniqueWorkName(bundleFilename)) != null) return@withContext true
+            if (findRunningWork(DownloadWorker.getUniqueWorkName(bundleFilename)) != null)
+                return@withContext true
 
             downloadMutex.withLock {
                 val activeCount =
@@ -122,7 +125,11 @@ class ModelDownloadManagerImpl(
 
                 val token = authRepository.authToken.value
                 val workRequest =
-                    createDownloadWorkRequest(downloadUrl, File(getModelPath(bundleFilename)), token)
+                    createDownloadWorkRequest(
+                        downloadUrl,
+                        File(getModelPath(bundleFilename)),
+                        token,
+                    )
                 workManager.enqueueUniqueWork(
                     DownloadWorker.getUniqueWorkName(bundleFilename),
                     ExistingWorkPolicy.KEEP,

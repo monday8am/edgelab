@@ -38,11 +38,14 @@ class DataStoreAuthorRepository(
     override suspend fun addAuthor(name: String): Result<AuthorInfo> {
         val trimmedName = name.trim()
         if (_authors.value.any { it.name.equals(trimmedName, ignoreCase = true) }) {
-            return Result.success(_authors.value.first { it.name.equals(trimmedName, ignoreCase = true) })
+            return Result.success(
+                _authors.value.first { it.name.equals(trimmedName, ignoreCase = true) }
+            )
         }
 
-        val authorInfo = apiClient.fetchAuthorInfo(trimmedName)
-            ?: return Result.failure(Exception("Author not found"))
+        val authorInfo =
+            apiClient.fetchAuthorInfo(trimmedName)
+                ?: return Result.failure(Exception("Author not found"))
 
         val updated = _authors.value + authorInfo
         _authors.value = updated
@@ -60,9 +63,7 @@ class DataStoreAuthorRepository(
     }
 
     private suspend fun loadFromDataStore(): List<AuthorInfo>? {
-        val jsonString = dataStore.data.map { preferences ->
-            preferences[authorsKey]
-        }.first()
+        val jsonString = dataStore.data.map { preferences -> preferences[authorsKey] }.first()
 
         return if (jsonString != null) {
             try {
@@ -77,9 +78,7 @@ class DataStoreAuthorRepository(
 
     private suspend fun persistToDataStore(authors: List<AuthorInfo>) {
         val jsonString = Json.encodeToString<List<AuthorInfo>>(authors)
-        dataStore.edit { preferences ->
-            preferences[authorsKey] = jsonString
-        }
+        dataStore.edit { preferences -> preferences[authorsKey] = jsonString }
     }
 
     private fun ensureDefaultPresent(authors: List<AuthorInfo>): List<AuthorInfo> {

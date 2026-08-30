@@ -40,21 +40,20 @@ class TestRepositoryImpl(
             ?: fetchNetworkTests().getOrElse { bundledRepository.getTests() }
     }
 
-    override fun getTestsAsFlow(): Flow<List<TestCaseDefinition>> =
-        flow {
-                // 1. Emit cached tests immediately if available
-                val cachedTests = localTestDataSource.getTests()
-                cachedTests?.takeIf { it.isNotEmpty() }?.let { emit(it) }
+    override fun getTestsAsFlow(): Flow<List<TestCaseDefinition>> = flow {
+        // 1. Emit cached tests immediately if available
+        val cachedTests = localTestDataSource.getTests()
+        cachedTests?.takeIf { it.isNotEmpty() }?.let { emit(it) }
 
-                // 2. Fetch and emit fresh tests from network
-                fetchNetworkTests()
-                    .onSuccess { networkTests -> saveAndEmitIfChanged(networkTests, cachedTests) }
-                    .onFailure { error ->
-                        logger.e(error) { "Failed to refresh tests from remote URL" }
-                        handleFallback(cachedTests)
-                    }
+        // 2. Fetch and emit fresh tests from network
+        fetchNetworkTests()
+            .onSuccess { networkTests -> saveAndEmitIfChanged(networkTests, cachedTests) }
+            .onFailure { error ->
+                logger.e(error) { "Failed to refresh tests from remote URL" }
+                handleFallback(cachedTests)
             }
-            .flowOn(dispatcher)
+    }
+        .flowOn(dispatcher)
 
     private suspend fun FlowCollector<List<TestCaseDefinition>>.saveAndEmitIfChanged(
         networkTests: List<TestCaseDefinition>,

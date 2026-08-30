@@ -7,11 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -95,9 +93,7 @@ fun ChatPanel(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 4.dp),
                 ) {
-                    items(chatMessages, key = { it.id }) { message ->
-                        ChatMessageItem(message)
-                    }
+                    items(chatMessages, key = { it.id }) { message -> ChatMessageItem(message) }
                 }
 
                 // Input bar
@@ -133,9 +129,9 @@ fun ChatPanel(
             // Collapsed: drag handle + last copilot message preview
             Column(
                 modifier =
-                    Modifier.fillMaxWidth()
-                        .height(80.dp)
-                        .clickable { onAction(LiveRideAction.ExpandChat) },
+                    Modifier.fillMaxWidth().height(80.dp).clickable {
+                        onAction(LiveRideAction.ExpandChat)
+                    },
                 verticalArrangement = Arrangement.Center,
             ) {
                 Box(
