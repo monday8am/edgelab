@@ -13,15 +13,8 @@ private val TOOL_CALL_BLOCK =
 private val CALL_SIGNATURE =
     Regex("""^([A-Za-z_][A-Za-z0-9_.]*)\s*\((.*)\)$""", RegexOption.DOT_MATCHES_ALL)
 
-/**
- * Reads LFM2's tool-call format: a Python list of calls between `<|tool_call_start|>` and
- * `<|tool_call_end|>`, e.g. `<|tool_call_start|>[get_weather(city="Madrid")]<|tool_call_end|>`.
- *
- * The payload is Pythonic, not JSON — `True`, `None` and single quotes are all legal — so argument
- * values go through a literal parser rather than `Json.parseToJsonElement`.
- *
- * This exists because litert-lm cannot parse LFM2 tool calls itself; see [toolCallDialectFor].
- */
+// LFM2 emits `<|tool_call_start|>[get_weather(city="Madrid")]<|tool_call_end|>`. The payload is
+// Pythonic, not JSON — `True`, `None` and single quotes are all legal — hence the literal parser.
 internal object Lfm2ToolCallDialect : ToolCallDialect {
     override fun recover(raw: String): List<TextualToolCall> =
         TOOL_CALL_BLOCK.findAll(raw)
@@ -48,7 +41,6 @@ private fun parseCall(text: String): TextualToolCall? {
 private fun parseArguments(inner: String): Map<String, JsonElement> =
     splitTopLevel(inner)
         .mapNotNull { arg ->
-            // Positional arguments can't be mapped onto a named schema, so they're dropped.
             val separator = indexOfTopLevel(arg, '=').takeIf { it > 0 } ?: return@mapNotNull null
             val key = arg.substring(0, separator).trim().trim('"', '\'')
             key to parseLiteral(arg.substring(separator + 1))
@@ -81,7 +73,6 @@ private fun unquote(value: String): String {
     return body.replace("\\\"", "\"").replace("\\'", "'").replace("\\n", "\n").replace("\\\\", "\\")
 }
 
-/** Splits on commas that sit outside quotes and outside any bracket nesting. */
 private fun splitTopLevel(text: String): List<String> {
     val parts = mutableListOf<String>()
     val current = StringBuilder()

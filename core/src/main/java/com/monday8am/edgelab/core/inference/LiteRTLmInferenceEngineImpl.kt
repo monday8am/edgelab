@@ -42,13 +42,10 @@ private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
     val modelConfig: ModelConfiguration,
-    /** How to recover tool calls this model family emits as text; a no-op for most families. */
     val dialect: ToolCallDialect,
-    /** Registered OpenAPI tools by name, used only by [dialect] recovery. */
     var toolsByName: Map<String, OpenApiTool> = emptyMap(),
 )
 
-/** Guard against a model that keeps re-emitting tool calls instead of answering. */
 private const val MAX_FALLBACK_TOOL_ROUNDS = 5
 
 /** LiteRT-LM implementation with native tool calling support. */
@@ -168,9 +165,7 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
                     Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
                     return emptyFlow() // Return an empty flow if there's no instance.
                 }
-        // Tool-call markup can only be recognised once the whole block has arrived, so a dialect
-        // that needs recovery can't stream safely: emitting a delta risks leaking half a marker.
-        // Rather than gate the stream token by token, buffer the turn and emit it in one go.
+        // A delta can carry half a marker, so a dialect needing recovery can't stream safely.
         if (instance.dialect !== RuntimeHandled) {
             Logger.i("LocalInferenceEngine") {
                 "⏸️ ${instance.modelConfig.modelFamily} needs tool-call recovery; buffering instead of streaming."
@@ -200,11 +195,6 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
             .flowOn(dispatcher)
     }
 
-    /**
-     * Runs any tool call the model emitted as text, feeds the results back, and returns its
-     * follow-up answer. Costs nothing for families litert-lm parses itself: [RuntimeHandled]
-     * reports no calls, so this falls straight through on the first check.
-     */
     private suspend fun resolveTextualToolCalls(instance: LlmModelInstance, raw: String): String {
         val dialect = instance.dialect
         var current = raw
@@ -222,7 +212,6 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
         return dialect.strip(current)
     }
 
-    /** Invokes the registered handlers for [calls], skipping any that are unknown or that throw. */
     private fun executeTextualToolCalls(
         instance: LlmModelInstance,
         calls: List<TextualToolCall>,

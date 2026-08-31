@@ -26,7 +26,8 @@ Strict unidirectional. No module may depend on a module to its right.
 9. IMPORTANT: Read `docs/patterns.md` before adding new classes. Read `docs/testing.md` before writing tests.
 10. Always rethrow `CancellationException` — never swallow in catch blocks.
 11. Remove all comments by default. Keep only comments with non-obvious rationale — design decisions, traps/gotchas, workarounds, and contract invariants (e.g. "idempotent", "must be a JSON object"). Delete any comment that restates the code or its names; when in doubt, delete.
-12. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
+12. Hard cap: **two lines** per surviving comment, and only where it is *extremely* needed for comprehension. Prefer a `//` note above the declaration over KDoc. Never document params, returns, or interface members — if the signature doesn't explain them, fix the naming.
+13. Rules apply to **new and modified code**. In existing files, follow the file's current patterns unless explicitly refactoring.
 
 ## Anti-Patterns
 
