@@ -168,6 +168,16 @@ class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = 
                     Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
                     return emptyFlow() // Return an empty flow if there's no instance.
                 }
+        // Tool-call markup can only be recognised once the whole block has arrived, so a dialect
+        // that needs recovery can't stream safely: emitting a delta risks leaking half a marker.
+        // Rather than gate the stream token by token, buffer the turn and emit it in one go.
+        if (instance.dialect !== RuntimeHandled) {
+            Logger.i("LocalInferenceEngine") {
+                "⏸️ ${instance.modelConfig.modelFamily} needs tool-call recovery; buffering instead of streaming."
+            }
+            return flow { emit(prompt(prompt).getOrThrow()) }
+        }
+
         val userMessage = Contents.of(prompt)
         var startTime = 0L
 
