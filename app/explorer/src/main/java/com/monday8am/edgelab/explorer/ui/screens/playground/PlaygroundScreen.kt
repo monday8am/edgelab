@@ -60,19 +60,18 @@ import kotlinx.serialization.json.JsonObject
 @Composable
 fun PlaygroundScreen(
     onNavigateToModelSelector: () -> Unit,
-    viewModel: AndroidPlaygroundViewModel =
-        viewModel {
-            AndroidPlaygroundViewModel(
-                PlaygroundViewModelImpl(
-                    probeRepository = ServiceLocator.probeRepository,
-                    modelDownloadManager = ServiceLocator.modelDownloadManager,
-                    modelRepository = ServiceLocator.modelRepository,
-                    backendFactory = ServiceLocator.playgroundBackendFactory,
-                    heuristicJudge = HeuristicToolOutputJudge(),
-                    judgeFactory = ServiceLocator.playgroundJudgeFactory,
-                )
+    viewModel: AndroidPlaygroundViewModel = viewModel {
+        AndroidPlaygroundViewModel(
+            PlaygroundViewModelImpl(
+                probeRepository = ServiceLocator.probeRepository,
+                modelDownloadManager = ServiceLocator.modelDownloadManager,
+                modelRepository = ServiceLocator.modelRepository,
+                backendFactory = ServiceLocator.playgroundBackendFactory,
+                heuristicJudge = HeuristicToolOutputJudge(),
+                judgeFactory = ServiceLocator.playgroundJudgeFactory,
             )
-        },
+        )
+    },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PlaygroundScreenContent(
@@ -219,7 +218,8 @@ private fun ModelHeader(
                             when (target) {
                                 PlaygroundTarget.Cloud ->
                                     "Cloud: Gemini Flash Lite — no download needed"
-                                is PlaygroundTarget.Local -> "On-device: ${target.model.displayName}"
+                                is PlaygroundTarget.Local ->
+                                    "On-device: ${target.model.displayName}"
                             },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -238,7 +238,9 @@ private fun ModelHeader(
                 )
                 availableModels.forEach { model ->
                     InputChip(
-                        selected = target is PlaygroundTarget.Local && target.model.modelId == model.modelId,
+                        selected =
+                            target is PlaygroundTarget.Local &&
+                                target.model.modelId == model.modelId,
                         onClick = { onSelectTarget(PlaygroundTarget.Local(model)) },
                         label = { Text(model.displayName) },
                     )
@@ -265,21 +267,17 @@ private fun ProbeLibrary(
         )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             availableProbes.forEach { probe ->
-                val isActive =
-                    activeProbes.any { it.function.name == probe.function.name }
+                val isActive = activeProbes.any { it.function.name == probe.function.name }
                 InputChip(
                     selected = isActive,
-                    onClick = {
-                        if (isActive) onRemoveProbe(probe) else onAddProbe(probe)
-                    },
+                    onClick = { if (isActive) onRemoveProbe(probe) else onAddProbe(probe) },
                     label = { Text(probe.function.name) },
                 )
             }
         }
         if (activeProbes.isNotEmpty()) {
             Text(
-                text =
-                    "Active: ${activeProbes.joinToString(", ") { it.function.name }}",
+                text = "Active: ${activeProbes.joinToString(", ") { it.function.name }}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -362,7 +360,7 @@ private fun TraceBubble(
 @Composable
 private fun ToolCallCardRow(entry: TraceEntry.ToolCallCard) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -434,9 +432,7 @@ private fun PromptBar(
             maxLines = 4,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onRun, enabled = !isRunning && prompt.isNotBlank()) {
-                Text("Run")
-            }
+            Button(onClick = onRun, enabled = !isRunning && prompt.isNotBlank()) { Text("Run") }
             AssistChip(onClick = onClear, label = { Text("Clear Trace") })
         }
     }
@@ -467,29 +463,28 @@ private fun PlaygroundPreviewWithTrace() {
                     name = "get_location",
                     description = "Get the user's location",
                     parameters = JsonObject(emptyMap()),
-                ),
+                )
         )
-    val trace = persistentListOf(
-        TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),
-        TraceEntry.ToolCallCard(
-            id = "t2",
-            toolName = "get_location",
-            args =
-                persistentListOf(
-                    ArgValue(name = "unused", value = "true"),
-                ).toImmutableList(),
-        ),
-        TraceEntry.ToolOutput(
-            id = "t3",
-            toolName = "get_location",
-            mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
-        ),
-        TraceEntry.ModelText(
-            id = "t4",
-            text = "You are in Madrid at 40.42, -3.70.",
-            usedToolOutput = ToolOutputVerdict.USED,
-        ),
-    )
+    val trace =
+        persistentListOf(
+            TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),
+            TraceEntry.ToolCallCard(
+                id = "t2",
+                toolName = "get_location",
+                args =
+                    persistentListOf(ArgValue(name = "unused", value = "true")).toImmutableList(),
+            ),
+            TraceEntry.ToolOutput(
+                id = "t3",
+                toolName = "get_location",
+                mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
+            ),
+            TraceEntry.ModelText(
+                id = "t4",
+                text = "You are in Madrid at 40.42, -3.70.",
+                usedToolOutput = ToolOutputVerdict.USED,
+            ),
+        )
     EdgeLabTheme {
         PlaygroundScreenContent(
             uiState =
@@ -511,20 +506,26 @@ private fun PlaygroundPreviewWithTrace() {
 @Preview(showBackground = true, name = "Ignored tool output", widthDp = 380)
 @Composable
 private fun PlaygroundPreviewIgnoredToolOutput() {
-    val trace = persistentListOf(
-        TraceEntry.UserPrompt(id = "t1", text = "What's the weather?"),
-        TraceEntry.ToolCallCard(
-            id = "t2",
-            toolName = "get_weather",
-            args = persistentListOf(ArgValue(name = "city", value = "Madrid")).toImmutableList(),
-        ),
-        TraceEntry.ToolOutput(id = "t3", toolName = "get_weather", mockResponse = "{\"tempC\": 21}"),
-        TraceEntry.ModelText(
-            id = "t4",
-            text = "I cannot check the weather right now.",
-            usedToolOutput = ToolOutputVerdict.IGNORED,
-        ),
-    )
+    val trace =
+        persistentListOf(
+            TraceEntry.UserPrompt(id = "t1", text = "What's the weather?"),
+            TraceEntry.ToolCallCard(
+                id = "t2",
+                toolName = "get_weather",
+                args =
+                    persistentListOf(ArgValue(name = "city", value = "Madrid")).toImmutableList(),
+            ),
+            TraceEntry.ToolOutput(
+                id = "t3",
+                toolName = "get_weather",
+                mockResponse = "{\"tempC\": 21}",
+            ),
+            TraceEntry.ModelText(
+                id = "t4",
+                text = "I cannot check the weather right now.",
+                usedToolOutput = ToolOutputVerdict.IGNORED,
+            ),
+        )
     EdgeLabTheme {
         PlaygroundScreenContent(
             uiState = PlaygroundUiState(trace = trace),
@@ -537,24 +538,25 @@ private fun PlaygroundPreviewIgnoredToolOutput() {
 @Preview(showBackground = true, name = "Apparently ignored tool output", widthDp = 380)
 @Composable
 private fun PlaygroundPreviewApparentlyIgnoredToolOutput() {
-    val trace = persistentListOf(
-        TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),
-        TraceEntry.ToolCallCard(
-            id = "t2",
-            toolName = "get_location",
-            args = persistentListOf(),
-        ),
-        TraceEntry.ToolOutput(
-            id = "t3",
-            toolName = "get_location",
-            mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
-        ),
-        TraceEntry.ModelText(
-            id = "t4",
-            text = "You are in Madrid.",
-            usedToolOutput = ToolOutputVerdict.APPARENTLY_IGNORED,
-        ),
-    )
+    val trace =
+        persistentListOf(
+            TraceEntry.UserPrompt(id = "t1", text = "Where am I?"),
+            TraceEntry.ToolCallCard(
+                id = "t2",
+                toolName = "get_location",
+                args = persistentListOf(),
+            ),
+            TraceEntry.ToolOutput(
+                id = "t3",
+                toolName = "get_location",
+                mockResponse = "{\"latitude\": 40.4168, \"longitude\": -3.7038}",
+            ),
+            TraceEntry.ModelText(
+                id = "t4",
+                text = "You are in Madrid.",
+                usedToolOutput = ToolOutputVerdict.APPARENTLY_IGNORED,
+            ),
+        )
     EdgeLabTheme {
         PlaygroundScreenContent(
             uiState = PlaygroundUiState(trace = trace),
@@ -574,7 +576,8 @@ private fun PlaygroundPreviewRunning() {
                 PlaygroundUiState(
                     target = PlaygroundTarget.Local(model),
                     availableModels = persistentListOf(model),
-                    trace = persistentListOf(TraceEntry.UserPrompt(id = "t1", text = "Where am I?")),
+                    trace =
+                        persistentListOf(TraceEntry.UserPrompt(id = "t1", text = "Where am I?")),
                     isRunning = true,
                 ),
             onAction = {},

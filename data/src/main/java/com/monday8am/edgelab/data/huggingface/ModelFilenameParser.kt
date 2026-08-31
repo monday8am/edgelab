@@ -118,6 +118,7 @@ internal object ModelFilenameParser {
             "deepseek",
             "fastvlm",
             "functiongemma",
+            "lfm2",
         )
 
     /** Extracts model family from the Hugging Face model ID. */

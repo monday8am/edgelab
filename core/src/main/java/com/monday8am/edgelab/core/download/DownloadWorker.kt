@@ -19,10 +19,10 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -40,9 +40,7 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     private val contentPendingIntent by lazy {
         applicationContext.packageManager
             .getLaunchIntentForPackage(applicationContext.packageName)
-            ?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
+            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP }
             ?.let {
                 PendingIntent.getActivity(
                     applicationContext,
@@ -54,11 +52,12 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     }
 
     private val cancelPendingIntent by lazy {
-        val intent = Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
-            action = CancelDownloadReceiver.ACTION
-            putExtra(CancelDownloadReceiver.EXTRA_BUNDLE_FILENAME, bundleFilename)
-            putExtra(CancelDownloadReceiver.EXTRA_NOTIFICATION_ID, notificationId)
-        }
+        val intent =
+            Intent(applicationContext, CancelDownloadReceiver::class.java).apply {
+                action = CancelDownloadReceiver.ACTION
+                putExtra(CancelDownloadReceiver.EXTRA_BUNDLE_FILENAME, bundleFilename)
+                putExtra(CancelDownloadReceiver.EXTRA_NOTIFICATION_ID, notificationId)
+            }
         PendingIntent.getBroadcast(
             applicationContext,
             notificationId,
@@ -100,10 +99,10 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
     private fun ensureNotificationChannel() {
         if (notificationManager.getNotificationChannel(NOTIFICATION_CHANNEL_ID) == null) {
             NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                NOTIFICATION_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW,
-            )
+                    NOTIFICATION_CHANNEL_ID,
+                    NOTIFICATION_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW,
+                )
                 .apply { description = NOTIFICATION_CHANNEL_DESCRIPTION }
                 .also { notificationManager.createNotificationChannel(it) }
         }
@@ -158,53 +157,55 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
             else -> "HTTP error $code"
         }
 
-    private suspend fun downloadFile(url: String, destFile: File) = withContext(Dispatchers.IO) {
-        val existingBytes = if (destFile.exists()) destFile.length() else 0L
-        var lastNotificationTime = 0L
+    private suspend fun downloadFile(url: String, destFile: File) =
+        withContext(Dispatchers.IO) {
+            val existingBytes = if (destFile.exists()) destFile.length() else 0L
+            var lastNotificationTime = 0L
 
-        val request = buildRequest(url, existingBytes)
-        httpClient.newCall(request).execute().use { response ->
-            if (response.code == HTTP_STATUS_RANGE_NOT_SATISFIABLE) {
-                notificationManager.cancel(notificationId)
-                return@withContext
-            }
-            if (!response.isSuccessful) {
-                val detail =
-                    parseHttpError(
-                        response.code,
-                        response.header(HEADER_X_ERROR_CODE),
-                        response.header(HEADER_X_ERROR_MESSAGE),
-                    )
-                throw IOException(detail)
-            }
+            val request = buildRequest(url, existingBytes)
+            httpClient.newCall(request).execute().use { response ->
+                if (response.code == HTTP_STATUS_RANGE_NOT_SATISFIABLE) {
+                    notificationManager.cancel(notificationId)
+                    return@withContext
+                }
+                if (!response.isSuccessful) {
+                    val detail =
+                        parseHttpError(
+                            response.code,
+                            response.header(HEADER_X_ERROR_CODE),
+                            response.header(HEADER_X_ERROR_MESSAGE),
+                        )
+                    throw IOException(detail)
+                }
 
-            val body = response.body
-            val isResuming = response.code == HTTP_STATUS_PARTIAL_CONTENT
-            val contentLen = body.contentLength()
-            val totalBytes =
-                if (isResuming) contentLen + existingBytes
-                else contentLen.takeIf { it > 0 } ?: -1L
+                val body = response.body
+                val isResuming = response.code == HTTP_STATUS_PARTIAL_CONTENT
+                val contentLen = body.contentLength()
+                val totalBytes =
+                    if (isResuming) contentLen + existingBytes
+                    else contentLen.takeIf { it > 0 } ?: -1L
 
-            body.byteStream().use { input ->
-                FileOutputStream(destFile, isResuming).use { output ->
-                    copyStreamWithProgress(input, output, totalBytes, existingBytes) { progress ->
-                        setProgress(workDataOf(KEY_PROGRESS to progress))
-                        val now = System.currentTimeMillis()
-                        if (
-                            now - lastNotificationTime >= NOTIFICATION_UPDATE_INTERVAL_MS ||
-                                progress >= 100f
-                        ) {
-                            notificationManager.notify(
-                                notificationId,
-                                createNotification(progress.roundToInt()),
-                            )
-                            lastNotificationTime = now
+                body.byteStream().use { input ->
+                    FileOutputStream(destFile, isResuming).use { output ->
+                        copyStreamWithProgress(input, output, totalBytes, existingBytes) { progress
+                            ->
+                            setProgress(workDataOf(KEY_PROGRESS to progress))
+                            val now = System.currentTimeMillis()
+                            if (
+                                now - lastNotificationTime >= NOTIFICATION_UPDATE_INTERVAL_MS ||
+                                    progress >= 100f
+                            ) {
+                                notificationManager.notify(
+                                    notificationId,
+                                    createNotification(progress.roundToInt()),
+                                )
+                                lastNotificationTime = now
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
     private suspend fun copyStreamWithProgress(
         input: InputStream,
@@ -212,36 +213,39 @@ class DownloadWorker(appContext: Context, workerParams: WorkerParameters) :
         totalBytes: Long,
         alreadyCopied: Long,
         onProgress: suspend (Float) -> Unit,
-    ) = withContext(Dispatchers.IO) {
-        val buffer = ByteArray(BUFFER_SIZE)
-        var bytesRead: Int
-        var bytesCopied: Long = alreadyCopied
-        var lastUpdateProgress = -1f
-        var lastUpdateTime = 0L
+    ) =
+        withContext(Dispatchers.IO) {
+            val buffer = ByteArray(BUFFER_SIZE)
+            var bytesRead: Int
+            var bytesCopied: Long = alreadyCopied
+            var lastUpdateProgress = -1f
+            var lastUpdateTime = 0L
 
-        while (input.read(buffer).also { bytesRead = it } != -1) {
-            if (isStopped) {
-                throw CancellationException("Download cancelled")
-            }
-            output.write(buffer, 0, bytesRead)
-            bytesCopied += bytesRead
+            while (input.read(buffer).also { bytesRead = it } != -1) {
+                if (isStopped) {
+                    throw CancellationException("Download cancelled")
+                }
+                output.write(buffer, 0, bytesRead)
+                bytesCopied += bytesRead
 
-            if (totalBytes > 0) {
-                val currentTime = System.currentTimeMillis()
-                val progress = (bytesCopied * 100).toFloat() / totalBytes.toFloat()
+                if (totalBytes > 0) {
+                    val currentTime = System.currentTimeMillis()
+                    val progress = (bytesCopied * 100).toFloat() / totalBytes.toFloat()
 
-                if (progress - lastUpdateProgress >= 1f || currentTime - lastUpdateTime >= 500L) {
-                    onProgress(progress)
-                    lastUpdateProgress = progress
-                    lastUpdateTime = currentTime
+                    if (
+                        progress - lastUpdateProgress >= 1f || currentTime - lastUpdateTime >= 500L
+                    ) {
+                        onProgress(progress)
+                        lastUpdateProgress = progress
+                        lastUpdateTime = currentTime
+                    }
                 }
             }
-        }
 
-        if (totalBytes > 0) {
-            onProgress(100f)
+            if (totalBytes > 0) {
+                onProgress(100f)
+            }
         }
-    }
 
     companion object {
         const val KEY_URL = "KEY_URL"

@@ -52,22 +52,24 @@ internal fun TestStatusList(
 ) {
     val listState = rememberLazyListState()
 
-    val runningIndex = remember(testStatuses) {
-        testStatuses.indexOfFirst { it.state == TestStatus.State.RUNNING }
-    }
+    val runningIndex =
+        remember(testStatuses) {
+            testStatuses.indexOfFirst { it.state == TestStatus.State.RUNNING }
+        }
 
-    val isRunning = remember(testStatuses) {
-        testStatuses.any { it.state == TestStatus.State.RUNNING }
-    }
+    val isRunning =
+        remember(testStatuses) { testStatuses.any { it.state == TestStatus.State.RUNNING } }
 
     LaunchedEffect(runningIndex) {
         if (runningIndex >= 0) {
             // Get item info if already visible
-            val runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
+            val runningItemInfo =
+                listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
 
             // Calculate center offset based on item size (use 160dp default if not visible yet)
-            val itemSize = runningItemInfo?.size ?: 480  // 160dp * 3 (approximate)
-            val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+            val itemSize = runningItemInfo?.size ?: 480 // 160dp * 3 (approximate)
+            val viewportWidth =
+                listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
             val centerOffset = ((viewportWidth / 2) - (itemSize / 2)).coerceAtLeast(0)
 
             // Animate scroll to center the running item
@@ -86,7 +88,11 @@ internal fun TestStatusList(
             )
         }
 
-        LazyRow(state = listState, modifier = Modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
+        LazyRow(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = spacedBy(8.dp),
+        ) {
             items(testStatuses) { status -> TestStatusCard(status = status) }
         }
     }
@@ -122,9 +128,7 @@ private fun DomainFilterRow(
                 FilterChip(
                     selected = filterDomain == domain,
                     onClick = { onSetDomainFilter(domain) },
-                    label = {
-                        Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
-                    },
+                    label = { Text(domain.name.lowercase().replaceFirstChar { it.uppercase() }) },
                     enabled = enabled,
                 )
             }
@@ -193,7 +197,10 @@ internal fun TestStatusCard(status: TestStatus) {
                         )
 
                     TestStatus.State.RUNNING ->
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                        )
 
                     TestStatus.State.PASS ->
                         Icon(
@@ -221,8 +228,8 @@ internal fun TestStatusCard(status: TestStatus) {
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    (status.state == TestStatus.State.PASS || status.state == TestStatus.State.FAIL) &&
-                        avgSpeed != null -> {
+                    (status.state == TestStatus.State.PASS ||
+                        status.state == TestStatus.State.FAIL) && avgSpeed != null -> {
                         Text(
                             text = "⌀ ${avgSpeed.toInt()} tok/s",
                             style = MaterialTheme.typography.labelSmall,
@@ -242,22 +249,22 @@ private fun TestStatusListPreview() {
         TestStatusList(
             testStatuses =
                 listOf(
-                    TestStatus(
-                        name = "Test 1",
-                        domain = TestDomain.GENERIC,
-                        state = TestStatus.State.PASS,
-                    ),
-                    TestStatus(
-                        name = "Test 2",
-                        domain = TestDomain.GENERIC,
-                        state = TestStatus.State.RUNNING,
-                    ),
-                    TestStatus(
-                        name = "Test 3",
-                        domain = TestDomain.GENERIC,
-                        state = TestStatus.State.IDLE,
-                    ),
-                )
+                        TestStatus(
+                            name = "Test 1",
+                            domain = TestDomain.GENERIC,
+                            state = TestStatus.State.PASS,
+                        ),
+                        TestStatus(
+                            name = "Test 2",
+                            domain = TestDomain.GENERIC,
+                            state = TestStatus.State.RUNNING,
+                        ),
+                        TestStatus(
+                            name = "Test 3",
+                            domain = TestDomain.GENERIC,
+                            state = TestStatus.State.IDLE,
+                        ),
+                    )
                     .toImmutableList(),
             filterDomain = null,
             availableDomains = persistentListOf(TestDomain.GENERIC, TestDomain.YAZIO),

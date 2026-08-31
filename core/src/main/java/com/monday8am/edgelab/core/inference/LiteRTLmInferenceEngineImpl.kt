@@ -34,17 +34,23 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
     val modelConfig: ModelConfiguration,
+    val dialect: ToolCallDialect,
+    var toolsByName: Map<String, OpenApiTool> = emptyMap(),
 )
 
+private const val MAX_FALLBACK_TOOL_ROUNDS = 5
+
 /** LiteRT-LM implementation with native tool calling support. */
-class LiteRTLmInferenceEngineImpl(
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : LocalInferenceEngine {
+class LiteRTLmInferenceEngineImpl(private val dispatcher: CoroutineDispatcher = Dispatchers.IO) :
+    LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
 
     override suspend fun initialize(
@@ -94,6 +100,7 @@ class LiteRTLmInferenceEngineImpl(
                         engine = engine,
                         conversation = conversation,
                         modelConfig = modelConfig,
+                        dialect = toolCallDialectFor(modelConfig.modelFamily),
                     )
 
                 Result.success(Unit)
@@ -132,8 +139,9 @@ class LiteRTLmInferenceEngineImpl(
                 }
                 val startTime = System.currentTimeMillis()
 
-                val userMessage = Contents.of(prompt)
-                val response = instance.conversation.sendMessageWithCallback(userMessage)
+                val raw =
+                    instance.conversation.sendMessageWithCallback(Message.user(Contents.of(prompt)))
+                val response = resolveTextualToolCalls(instance, raw)
 
                 val duration = System.currentTimeMillis() - startTime
                 val tokensApprox = response.length / 4 // Rough estimate: 1 token ≈ 4 chars
@@ -157,13 +165,23 @@ class LiteRTLmInferenceEngineImpl(
                     Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
                     return emptyFlow() // Return an empty flow if there's no instance.
                 }
+        // A delta can carry half a marker, so a dialect needing recovery can't stream safely.
+        if (instance.dialect !== RuntimeHandled) {
+            Logger.i("LocalInferenceEngine") {
+                "⏸️ ${instance.modelConfig.modelFamily} needs tool-call recovery; buffering instead of streaming."
+            }
+            return flow { emit(prompt(prompt).getOrThrow()) }
+        }
+
         val userMessage = Contents.of(prompt)
         var startTime = 0L
 
         return instance.conversation
             .sendMessageAsync(userMessage)
             .map { message ->
-                message.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
+                message.contents.contents.filterIsInstance<Content.Text>().joinToString("") {
+                    it.text
+                }
             }
             .filter { it.isNotEmpty() }
             .onStart {
@@ -175,6 +193,47 @@ class LiteRTLmInferenceEngineImpl(
                 Logger.i("LocalInferenceEngine") { "✅ Streaming inference complete: ${duration}ms" }
             }
             .flowOn(dispatcher)
+    }
+
+    private suspend fun resolveTextualToolCalls(instance: LlmModelInstance, raw: String): String {
+        val dialect = instance.dialect
+        var current = raw
+        repeat(MAX_FALLBACK_TOOL_ROUNDS) {
+            val calls = dialect.recover(current)
+            if (calls.isEmpty()) return current
+
+            val responses = executeTextualToolCalls(instance, calls)
+            if (responses.isEmpty()) return dialect.strip(current)
+
+            current =
+                instance.conversation.sendMessageWithCallback(Message.tool(Contents.of(responses)))
+        }
+        Logger.w("LocalInferenceEngine") { "🔁 Tool-call fallback hit its round limit." }
+        return dialect.strip(current)
+    }
+
+    private fun executeTextualToolCalls(
+        instance: LlmModelInstance,
+        calls: List<TextualToolCall>,
+    ): List<Content.ToolResponse> {
+        Logger.w("LocalInferenceEngine") {
+            "🩹 Runtime returned ${calls.size} tool call(s) as text; dispatching them manually."
+        }
+        return calls.mapNotNull { call ->
+            val tool = instance.toolsByName[call.name]
+            if (tool == null) {
+                Logger.w("LocalInferenceEngine") { "❓ Unknown tool in response: ${call.name}" }
+                return@mapNotNull null
+            }
+            val result = runCatching {
+                tool.execute(call.argumentsJson)
+            }
+                .getOrElse { e ->
+                    Logger.e("LocalInferenceEngine", e) { "Tool '${call.name}' failed" }
+                    return@mapNotNull null
+                }
+            Content.ToolResponse(call.name, result)
+        }
     }
 
     override fun initializeAsFlow(
@@ -192,15 +251,19 @@ class LiteRTLmInferenceEngineImpl(
                 ?: return Result.failure(IllegalStateException("Engine not initialized"))
         return runCatching {
             instance.conversation.close()
-            val toolProviders =
-                tools.map { t ->
-                    when (t) {
-                        is ToolProvider -> t
-                        is OpenApiTool -> tool(t)
-                        is ToolSet -> tool(t)
-                        else -> throw IllegalArgumentException("Unsupported tool type: ${t::class}")
-                    }
+            instance.toolsByName =
+                tools
+                    .filterIsInstance<OpenApiTool>()
+                    .mapNotNull { t -> toolName(t.getToolDescriptionJsonString())?.let { it to t } }
+                    .toMap()
+            val toolProviders = tools.map { t ->
+                when (t) {
+                    is ToolProvider -> t
+                    is OpenApiTool -> tool(t)
+                    is ToolSet -> tool(t)
+                    else -> throw IllegalArgumentException("Unsupported tool type: ${t::class}")
                 }
+            }
             val conversationConfig =
                 ConversationConfig(
                     systemInstruction = Contents.of("You are a helpful assistant."),
@@ -212,7 +275,6 @@ class LiteRTLmInferenceEngineImpl(
                             temperature = instance.modelConfig.defaultTemperature.toDouble(),
                         ),
                 )
-            Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation with ${tools.size} tools" }
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
     }
@@ -227,8 +289,13 @@ class LiteRTLmInferenceEngineImpl(
     }
 }
 
+private fun toolName(schemaJson: String): String? = runCatching {
+    Json.parseToJsonElement(schemaJson).jsonObject["name"]?.jsonPrimitive?.content
+}
+    .getOrNull()
+
 @OptIn(InternalCoroutinesApi::class)
-private suspend fun Conversation.sendMessageWithCallback(content: Contents): String =
+private suspend fun Conversation.sendMessageWithCallback(message: Message): String =
     suspendCancellableCoroutine { continuation ->
         val resultBuilder = StringBuilder()
 
@@ -250,7 +317,7 @@ private suspend fun Conversation.sendMessageWithCallback(content: Contents): Str
                 }
             }
 
-        this.sendMessageAsync(content, callback)
+        this.sendMessageAsync(message, callback)
 
         // Handle coroutine cancellation.
         // LiteRT-LM's Conversation API does not currently offer a direct way to interrupt an

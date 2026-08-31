@@ -78,7 +78,9 @@ private class FirebaseAiChatSession(private val chat: Chat) : CloudChatSession {
         // that it rejects outright. A FunctionResponsePart still reads as a tool result to Gemini.
         val turn =
             content(role = "user") {
-                responses.forEach { part(FunctionResponsePart(it.name, it.jsonResponse.asJsonObject())) }
+                responses.forEach {
+                    part(FunctionResponsePart(it.name, it.jsonResponse.asJsonObject()))
+                }
             }
         return chat.sendMessage(turn).toCloudReply()
     }
@@ -87,7 +89,10 @@ private class FirebaseAiChatSession(private val chat: Chat) : CloudChatSession {
 private fun GenerateContentResponse.toCloudReply(): CloudReply =
     CloudReply(
         text = text.orEmpty(),
-        calls = functionCalls.map { CloudFunctionCall(it.name, it.args.mapValues { (_, v) -> v.unwrap() }) },
+        calls =
+            functionCalls.map {
+                CloudFunctionCall(it.name, it.args.mapValues { (_, v) -> v.unwrap() })
+            },
     )
 
 /**
@@ -95,9 +100,10 @@ private fun GenerateContentResponse.toCloudReply(): CloudReply =
  * anything that isn't one is wrapped rather than rejected — a plain-string mock is a legitimate
  * thing to probe with.
  */
-private fun String.asJsonObject(): JsonObject =
-    runCatching { kotlinx.serialization.json.Json.parseToJsonElement(this).jsonObject }
-        .getOrElse { buildJsonObject { put("result", this@asJsonObject) } }
+private fun String.asJsonObject(): JsonObject = runCatching {
+    kotlinx.serialization.json.Json.parseToJsonElement(this).jsonObject
+}
+    .getOrElse { buildJsonObject { put("result", this@asJsonObject) } }
 
 private fun JsonElement.unwrap(): Any? =
     when (this) {
@@ -109,9 +115,9 @@ private fun JsonElement.unwrap(): Any? =
     }
 
 /**
- * Converts an OpenAI-style tool spec into Gemini's declaration shape. The two agree on
- * structure, so this is a mechanical walk of the JSON Schema — the only real translation is that
- * Gemini names the *optional* properties where OpenAI names the required ones.
+ * Converts an OpenAI-style tool spec into Gemini's declaration shape. The two agree on structure,
+ * so this is a mechanical walk of the JSON Schema — the only real translation is that Gemini names
+ * the *optional* properties where OpenAI names the required ones.
  */
 private fun ToolSpecification.toDeclaration(): FunctionDeclaration {
     val params = function.parameters as? JsonObject

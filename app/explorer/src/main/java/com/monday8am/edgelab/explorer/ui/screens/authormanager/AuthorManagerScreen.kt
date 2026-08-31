@@ -85,10 +85,7 @@ private fun AuthorManagerScreenContent(
         }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)
         ) {
             items(uiState.authors, key = { it.name }) { author ->
                 AuthorItem(
@@ -118,9 +115,7 @@ private fun AuthorItem(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AuthorAvatar(name = author.name)
@@ -160,12 +155,13 @@ private fun AuthorAvatar(
 ) {
     val initials = name.take(2).uppercase()
     Box(
-        modifier = modifier
-            .size(40.dp)
-            .background(
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shape = CircleShape,
-            ),
+        modifier =
+            modifier
+                .size(40.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = CircleShape,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -229,13 +225,20 @@ private fun AddAuthorRow(
 private fun AuthorManagerScreenPreview() {
     EdgeLabTheme {
         AuthorManagerScreenContent(
-            uiState = AuthorUiState(
-                authors = listOf(
-                    AuthorInfo(name = "litert-community", isDefault = true, modelCount = 12),
-                    AuthorInfo(name = "google", modelCount = 45),
-                ).toImmutableList(),
-                addFieldText = "",
-            ),
+            uiState =
+                AuthorUiState(
+                    authors =
+                        listOf(
+                                AuthorInfo(
+                                    name = "litert-community",
+                                    isDefault = true,
+                                    modelCount = 12,
+                                ),
+                                AuthorInfo(name = "google", modelCount = 45),
+                            )
+                            .toImmutableList(),
+                    addFieldText = "",
+                ),
             onAction = {},
             onNavigateBack = {},
         )

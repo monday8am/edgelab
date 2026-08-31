@@ -47,9 +47,7 @@ private data class GravelSectorDto(
     @SerialName("km_from_start") val kmFromStart: Float,
 )
 
-/**
- * Loads segment data from bundled JSON assets at routes/{routeId}/segments.json.
- */
+/** Loads segment data from bundled JSON assets at routes/{routeId}/segments.json. */
 class AssetSegmentRepository(private val context: Context) : SegmentRepository {
 
     override suspend fun getSegments(routeId: String): Result<SegmentsData> =

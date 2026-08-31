@@ -35,9 +35,7 @@ private data class HourlyWeatherDto(
     @SerialName("uv_index") val uvIndex: Int,
 )
 
-/**
- * Loads weather data from bundled JSON assets at routes/{routeId}/weather.json.
- */
+/** Loads weather data from bundled JSON assets at routes/{routeId}/weather.json. */
 class AssetWeatherRepository(private val context: Context) : WeatherRepository {
 
     override suspend fun getWeather(routeId: String): Result<WeatherData> =

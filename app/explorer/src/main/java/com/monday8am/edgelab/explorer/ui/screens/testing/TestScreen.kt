@@ -29,12 +29,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.explorer.di.ServiceLocator
+import com.monday8am.edgelab.core.download.ModelDownloadManagerImpl
+import com.monday8am.edgelab.core.inference.LiteRTLmInferenceEngineImpl
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.data.testing.TestDomain
-import com.monday8am.edgelab.core.download.ModelDownloadManagerImpl
-import com.monday8am.edgelab.core.inference.LiteRTLmInferenceEngineImpl
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 import com.monday8am.edgelab.presentation.testing.TestResultFrame
 import com.monday8am.edgelab.presentation.testing.TestStatus
@@ -83,9 +83,7 @@ fun TestScreen(
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         isInitializing = state.isInitializing,
-        onRunTests = { filter ->
-            viewModel.onUiAction(TestUiAction.RunTests(filter))
-        },
+        onRunTests = { filter -> viewModel.onUiAction(TestUiAction.RunTests(filter)) },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
         onNavigateToTestDetails = onNavigateToTestDetails,
         modifier = Modifier,
@@ -217,7 +215,9 @@ private fun TestResultsList(
             }
 
             if (lastItemInfo != null && lastItemInfo.index == lastIndex) {
-                val viewportHeight = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+                val viewportHeight =
+                    listState.layoutInfo.viewportEndOffset -
+                        listState.layoutInfo.viewportStartOffset
                 val scrollOffset = (lastItemInfo.size - viewportHeight).coerceAtLeast(0)
                 listState.scrollToItem(lastIndex, scrollOffset)
             }
@@ -266,27 +266,27 @@ private fun TestContentPreview() {
             frames =
                 persistentMapOf(
                     "1" to
-                            TestResultFrame.Content(
-                                testName = "TEST 0: Basic Response",
-                                chunk = "",
-                                accumulator = "Hello! I'm doing great, thanks for asking!",
-                            ),
+                        TestResultFrame.Content(
+                            testName = "TEST 0: Basic Response",
+                            chunk = "",
+                            accumulator = "Hello! I'm doing great, thanks for asking!",
+                        ),
                     "2" to
-                            TestResultFrame.Validation(
-                                testName = "TEST 0: Basic Response",
-                                result = ValidationResult.Pass("Valid response received"),
-                                duration = 1234,
-                                fullContent = "Hello! I'm doing great, thanks for asking!",
-                            ),
+                        TestResultFrame.Validation(
+                            testName = "TEST 0: Basic Response",
+                            result = ValidationResult.Pass("Valid response received"),
+                            duration = 1234,
+                            fullContent = "Hello! I'm doing great, thanks for asking!",
+                        ),
                 ),
             testStatuses =
                 listOf(
-                    TestStatus(
-                        name = "TEST 0: Basic Response",
-                        domain = TestDomain.GENERIC,
-                        state = TestStatus.State.PASS,
+                        TestStatus(
+                            name = "TEST 0: Basic Response",
+                            domain = TestDomain.GENERIC,
+                            state = TestStatus.State.PASS,
+                        )
                     )
-                )
                     .toImmutableList(),
             availableDomains = listOf(TestDomain.GENERIC, TestDomain.YAZIO).toImmutableList(),
             selectedModel = ModelCatalog.DEFAULT,

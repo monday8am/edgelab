@@ -12,13 +12,13 @@ import com.monday8am.edgelab.core.storage.DataStoreModelDataSource
 import com.monday8am.edgelab.core.storage.DataStoreTestDataSource
 import com.monday8am.edgelab.data.auth.AuthRepository
 import com.monday8am.edgelab.data.auth.AuthorRepository
+import com.monday8am.edgelab.data.huggingface.FallbackModelCatalogProvider
+import com.monday8am.edgelab.data.huggingface.HuggingFaceApiClient
+import com.monday8am.edgelab.data.huggingface.HuggingFaceModelRepository
 import com.monday8am.edgelab.data.model.ModelCatalog
 import com.monday8am.edgelab.data.model.ModelCatalogProvider
 import com.monday8am.edgelab.data.model.ModelRepository
 import com.monday8am.edgelab.data.model.ModelRepositoryImpl
-import com.monday8am.edgelab.data.huggingface.FallbackModelCatalogProvider
-import com.monday8am.edgelab.data.huggingface.HuggingFaceApiClient
-import com.monday8am.edgelab.data.huggingface.HuggingFaceModelRepository
 import com.monday8am.edgelab.data.playground.AssetsProbeRepository
 import com.monday8am.edgelab.data.playground.ProbeRepository
 import com.monday8am.edgelab.data.testing.AssetsTestRepository
@@ -61,7 +61,7 @@ object ServiceLocator {
                         context = appContext,
                         clientId = BuildConfig.HF_CLIENT_ID,
                         redirectScheme = "edgelab",
-                        activityClass = MainActivity::class.java
+                        activityClass = MainActivity::class.java,
                     )
             }
             return _oAuthManager!!
@@ -73,9 +73,7 @@ object ServiceLocator {
         _oAuthManager = null
     }
 
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
-        name = "settings"
-    )
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
     val huggingFaceApiClient: HuggingFaceApiClient by lazy {
         HuggingFaceApiClient(authRepository = authRepository)
@@ -91,11 +89,12 @@ object ServiceLocator {
 
     val modelCatalogProvider: ModelCatalogProvider by lazy {
         FallbackModelCatalogProvider(
-            primary = HuggingFaceModelRepository(
-                apiClient = huggingFaceApiClient,
-                authorRepository = authorRepository,
-                localModelDataSource = DataStoreModelDataSource(appContext.dataStore),
-            ),
+            primary =
+                HuggingFaceModelRepository(
+                    apiClient = huggingFaceApiClient,
+                    authorRepository = authorRepository,
+                    localModelDataSource = DataStoreModelDataSource(appContext.dataStore),
+                ),
             fallback = ModelCatalog.ALL_MODELS,
         )
     }
@@ -122,7 +121,7 @@ object ServiceLocator {
             remoteUrl = REMOTE_TESTS_URL,
             localTestDataSource = DataStoreTestDataSource(appContext.dataStore, json),
             bundledRepository = AssetsTestRepository(),
-            json = json
+            json = json,
         )
     }
 

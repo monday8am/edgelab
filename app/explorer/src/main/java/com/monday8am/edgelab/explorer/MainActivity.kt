@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Only handle intent if we are starting fresh, to avoid re-processing 
+        // Only handle intent if we are starting fresh, to avoid re-processing
         // stale intents on recreation (e.g. rotation or process restoration)
         if (savedInstanceState == null) {
             ServiceLocator.oAuthManager.onHandleIntent(intent)

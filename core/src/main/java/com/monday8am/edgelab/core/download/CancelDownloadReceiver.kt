@@ -12,9 +12,8 @@ class CancelDownloadReceiver : BroadcastReceiver() {
         val bundleFilename = intent.getStringExtra(EXTRA_BUNDLE_FILENAME) ?: return
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0)
 
-        WorkManager.getInstance(context).cancelUniqueWork(
-            DownloadWorker.getUniqueWorkName(bundleFilename)
-        )
+        WorkManager.getInstance(context)
+            .cancelUniqueWork(DownloadWorker.getUniqueWorkName(bundleFilename))
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

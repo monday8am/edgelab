@@ -8,9 +8,7 @@ import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import java.io.InputStream
 import java.io.OutputStream
 
-/**
- * A DataStore Serializer that uses Google Tink (AEAD) to encrypt/decrypt auth tokens.
- */
+/** A DataStore Serializer that uses Google Tink (AEAD) to encrypt/decrypt auth tokens. */
 class AuthTokenSerializer(private val aead: Aead) : Serializer<String?> {
     override val defaultValue: String? = null
 
@@ -44,12 +42,15 @@ class AuthTokenSerializer(private val aead: Aead) : Serializer<String?> {
         fun factory(context: Context): AuthTokenSerializer {
             AeadConfig.register()
 
-            val keysetHandle = AndroidKeysetManager.Builder()
-                .withSharedPref(context, KEYSET_NAME, PREFERENCE_FILE)
-                .withKeyTemplate(com.google.crypto.tink.aead.AesGcmKeyManager.aes256GcmTemplate())
-                .withMasterKeyUri(MASTER_KEY_URI)
-                .build()
-                .keysetHandle
+            val keysetHandle =
+                AndroidKeysetManager.Builder()
+                    .withSharedPref(context, KEYSET_NAME, PREFERENCE_FILE)
+                    .withKeyTemplate(
+                        com.google.crypto.tink.aead.AesGcmKeyManager.aes256GcmTemplate()
+                    )
+                    .withMasterKeyUri(MASTER_KEY_URI)
+                    .build()
+                    .keysetHandle
 
             val aead = keysetHandle.getPrimitive(Aead::class.java)
             return AuthTokenSerializer(aead)

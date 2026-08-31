@@ -24,11 +24,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.testing.TestCaseDefinition
 import com.monday8am.edgelab.data.testing.TestDomain
 import com.monday8am.edgelab.data.testing.TestQueryDefinition
 import com.monday8am.edgelab.data.testing.ValidationRule
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 import com.monday8am.edgelab.presentation.testdetails.TestDetailsUiAction
 import com.monday8am.edgelab.presentation.testdetails.TestDetailsViewModelImpl
@@ -38,12 +38,11 @@ import kotlinx.collections.immutable.toImmutableList
 @Composable
 fun TestDetailsScreen(
     onNavigateBack: () -> Unit,
-    viewModel: AndroidTestDetailsViewModel =
-        viewModel {
-            AndroidTestDetailsViewModel(
-                TestDetailsViewModelImpl(testRepository = ServiceLocator.testRepository),
-            )
-        },
+    viewModel: AndroidTestDetailsViewModel = viewModel {
+        AndroidTestDetailsViewModel(
+            TestDetailsViewModelImpl(testRepository = ServiceLocator.testRepository)
+        )
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -137,38 +136,38 @@ private fun TestDetailsContentPreview() {
         TestDetailsContent(
             tests =
                 listOf(
-                    TestCaseDefinition(
-                        id = "test_1",
-                        name = "Basic Response Test",
-                        description = listOf("This is a test description"),
-                        domain = TestDomain.GENERIC,
-                        query = TestQueryDefinition("Test query", "Query description"),
-                        systemPrompt = "System prompt",
-                        rules = listOf(ValidationRule.ChatValid, ValidationRule.NoToolCalls),
-                    ),
-                    TestCaseDefinition(
-                        id = "test_2",
-                        name = "Yazio Domain Test",
-                        description = emptyList(),
-                        domain = TestDomain.YAZIO,
-                        query = TestQueryDefinition("Test query", "Query description"),
-                        systemPrompt = "System prompt",
-                        rules = listOf(ValidationRule.ChatValid),
-                    ),
-                    TestCaseDefinition(
-                        id = "test_3",
-                        name = "Tool Calling Test",
-                        description = listOf("Tests tool calling functionality"),
-                        domain = TestDomain.GENERIC,
-                        query = TestQueryDefinition("Test query", "Query description"),
-                        systemPrompt = "System prompt",
-                        rules =
-                            listOf(
-                                ValidationRule.ToolMatch("tool_name"),
-                                ValidationRule.ResponseLengthMin(10),
-                            ),
-                    ),
-                )
+                        TestCaseDefinition(
+                            id = "test_1",
+                            name = "Basic Response Test",
+                            description = listOf("This is a test description"),
+                            domain = TestDomain.GENERIC,
+                            query = TestQueryDefinition("Test query", "Query description"),
+                            systemPrompt = "System prompt",
+                            rules = listOf(ValidationRule.ChatValid, ValidationRule.NoToolCalls),
+                        ),
+                        TestCaseDefinition(
+                            id = "test_2",
+                            name = "Yazio Domain Test",
+                            description = emptyList(),
+                            domain = TestDomain.YAZIO,
+                            query = TestQueryDefinition("Test query", "Query description"),
+                            systemPrompt = "System prompt",
+                            rules = listOf(ValidationRule.ChatValid),
+                        ),
+                        TestCaseDefinition(
+                            id = "test_3",
+                            name = "Tool Calling Test",
+                            description = listOf("Tests tool calling functionality"),
+                            domain = TestDomain.GENERIC,
+                            query = TestQueryDefinition("Test query", "Query description"),
+                            systemPrompt = "System prompt",
+                            rules =
+                                listOf(
+                                    ValidationRule.ToolMatch("tool_name"),
+                                    ValidationRule.ResponseLengthMin(10),
+                                ),
+                        ),
+                    )
                     .toImmutableList(),
             availableDomains = listOf(TestDomain.GENERIC, TestDomain.YAZIO).toImmutableList(),
             filterDomain = null,

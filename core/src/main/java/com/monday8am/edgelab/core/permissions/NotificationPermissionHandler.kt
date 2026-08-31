@@ -11,8 +11,8 @@ import androidx.core.content.ContextCompat
  * Screen-scoped helper that gates an action behind the POST_NOTIFICATIONS runtime permission on
  * Android 13+.
  *
- * Wire it to an [ActivityResultLauncher] created in your Composable, then call [request] before
- * the guarded action.
+ * Wire it to an [ActivityResultLauncher] created in your Composable, then call [request] before the
+ * guarded action.
  */
 class NotificationPermissionHandler(
     private val context: Context,

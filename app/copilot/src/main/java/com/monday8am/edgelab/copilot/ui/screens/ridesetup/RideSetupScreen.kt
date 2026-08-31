@@ -42,16 +42,17 @@ import com.monday8am.edgelab.presentation.ridesetup.Difficulty
 import com.monday8am.edgelab.presentation.ridesetup.GpsMode
 import com.monday8am.edgelab.presentation.ridesetup.PlaybackSpeed
 import com.monday8am.edgelab.presentation.ridesetup.RideSetupViewModelImpl
-import com.monday8am.edgelab.presentation.ridesetup.RouteInfo
 import com.monday8am.edgelab.presentation.ridesetup.RideSetupViewModelImpl.Companion.ROUTE_CATALOG
+import com.monday8am.edgelab.presentation.ridesetup.RouteInfo
 import com.monday8am.edgelab.presentation.ridesetup.UiAction
 import com.monday8am.edgelab.presentation.ridesetup.UiState
 
 @Composable
 fun RideSetupScreen(
     onNavigateToLiveRide: (routeId: String, playbackSpeed: Float) -> Unit,
-    viewModel: AndroidRideSetupViewModel =
-        viewModel { AndroidRideSetupViewModel(RideSetupViewModelImpl()) },
+    viewModel: AndroidRideSetupViewModel = viewModel {
+        AndroidRideSetupViewModel(RideSetupViewModelImpl())
+    },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     RideSetupScreenContent(
@@ -69,8 +70,7 @@ private fun RideSetupScreenContent(
     onNavigateToLiveRide: (routeId: String, playbackSpeed: Float) -> Unit = { _, _ -> },
 ) {
     Column(
-        modifier =
-            Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         Text(
@@ -186,8 +186,7 @@ private fun RideSetupScreenContent(
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -245,9 +244,7 @@ private fun DifficultyBadge(difficulty: Difficulty) {
             Difficulty.HARD -> "Hard" to MaterialTheme.colorScheme.error
             Difficulty.EXPERT -> "Expert" to MaterialTheme.colorScheme.error
         }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f))
-    ) {
+    Card(colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f))) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -266,8 +263,7 @@ private fun AdvancedSettingsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             TextButton(
@@ -302,9 +298,7 @@ private fun AdvancedSettingsSection(
                     SettingToggleRow(
                         label = "Use Remote LLM",
                         checked = settings.useRemoteLLM,
-                        onCheckedChange = {
-                            onSettingsChange(settings.copy(useRemoteLLM = it))
-                        },
+                        onCheckedChange = { onSettingsChange(settings.copy(useRemoteLLM = it)) },
                     )
                     SettingToggleRow(
                         label = "Show Developer HUD",
@@ -316,9 +310,7 @@ private fun AdvancedSettingsSection(
                     SettingToggleRow(
                         label = "Enable Auto Voice",
                         checked = settings.enableAutoVoice,
-                        onCheckedChange = {
-                            onSettingsChange(settings.copy(enableAutoVoice = it))
-                        },
+                        onCheckedChange = { onSettingsChange(settings.copy(enableAutoVoice = it)) },
                     )
                 }
             }
@@ -345,11 +337,7 @@ private fun SettingToggleRow(
 @Preview(showBackground = true, name = "Default State")
 @Composable
 private fun RideSetupPreview() {
-    CyclingCopilotTheme {
-        RideSetupScreenContent(
-            uiState = UiState(routes = ROUTE_CATALOG),
-        )
-    }
+    CyclingCopilotTheme { RideSetupScreenContent(uiState = UiState(routes = ROUTE_CATALOG)) }
 }
 
 @Preview(showBackground = true, name = "Route Selected")
@@ -363,7 +351,7 @@ private fun RideSetupPreviewRouteSelected() {
                     selectedRouteId = "strade-bianche",
                     playbackSpeed = PlaybackSpeed.FAST,
                     isStartEnabled = true,
-                ),
+                )
         )
     }
 }

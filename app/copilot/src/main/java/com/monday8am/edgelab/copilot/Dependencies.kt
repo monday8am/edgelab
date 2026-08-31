@@ -39,9 +39,7 @@ object Dependencies {
         CoreDependencies.createAuthRepository(appContext, applicationScope)
     }
 
-    val inferenceEngine: LocalInferenceEngine by lazy {
-        CoreDependencies.createInferenceEngine()
-    }
+    val inferenceEngine: LocalInferenceEngine by lazy { CoreDependencies.createInferenceEngine() }
 
     val routeRepository: RouteRepository by lazy {
         CoreDependencies.createRouteRepository(appContext)
@@ -62,9 +60,10 @@ object Dependencies {
         // TODO: Create CopilotModelCatalogProvider with only FunctionGemma 2B + Gemma 2 550M
         ModelRepositoryImpl(
             object : com.monday8am.edgelab.data.model.ModelCatalogProvider {
-                override fun getModels() = kotlinx.coroutines.flow.flowOf(
-                    com.monday8am.edgelab.data.model.ModelCatalog.ALL_MODELS
-                )
+                override fun getModels() =
+                    kotlinx.coroutines.flow.flowOf(
+                        com.monday8am.edgelab.data.model.ModelCatalog.ALL_MODELS
+                    )
             }
         )
     }

@@ -9,19 +9,20 @@ import kotlinx.coroutines.flow.stateIn
 
 class AuthRepositoryImpl(
     private val context: Context,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
 ) : AuthRepository {
 
-    private val dataStore = androidx.datastore.core.DataStoreFactory.create(
-        serializer = AuthTokenSerializer.factory(context),
-        produceFile = { context.filesDir.resolve("auth_token.pb") }
-    )
+    private val dataStore =
+        androidx.datastore.core.DataStoreFactory.create(
+            serializer = AuthTokenSerializer.factory(context),
+            produceFile = { context.filesDir.resolve("auth_token.pb") },
+        )
 
-    override val authToken: StateFlow<String?> = dataStore.data
-        .stateIn(
+    override val authToken: StateFlow<String?> =
+        dataStore.data.stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
-            initialValue = null
+            initialValue = null,
         )
 
     override suspend fun saveToken(token: String) {

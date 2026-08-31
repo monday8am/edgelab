@@ -105,12 +105,13 @@ private fun TestDetailsCardPreview() {
                 TestCaseDefinition(
                     id = "test_1",
                     name = "Basic Response Test",
-                    description = listOf("This is a test description that shows how the card looks"),
+                    description =
+                        listOf("This is a test description that shows how the card looks"),
                     domain = TestDomain.GENERIC,
                     query = TestQueryDefinition("Test query", "Query description"),
                     systemPrompt = "System prompt",
                     rules = listOf(ValidationRule.ChatValid, ValidationRule.NoToolCalls),
-                ),
+                )
         )
     }
 }
@@ -129,7 +130,7 @@ private fun TestDetailsCardYazioPreview() {
                     query = TestQueryDefinition("Test query", "Query description"),
                     systemPrompt = "System prompt",
                     rules = listOf(ValidationRule.ChatValid),
-                ),
+                )
         )
     }
 }

@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.core.permissions.NotificationPermissionHandler
-import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.data.model.ModelCatalog
+import com.monday8am.edgelab.explorer.di.ServiceLocator
 import com.monday8am.edgelab.explorer.ui.screens.testing.InitializationIndicator
 import com.monday8am.edgelab.explorer.ui.theme.EdgeLabTheme
 import com.monday8am.edgelab.presentation.modelselector.DownloadInfo
@@ -73,9 +73,8 @@ fun ModelSelectorScreen(
         )
     }
     val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
+            isGranted ->
             permissionHandler.onPermissionResult(isGranted)
         }
     DisposableEffect(permissionLauncher) {
@@ -108,9 +107,7 @@ fun ModelSelectorScreen(
     }
 
     // Function to launch OAuth flow
-    val launchOAuth: () -> Unit = {
-        oAuthManager.startAuthorization()
-    }
+    val launchOAuth: () -> Unit = { oAuthManager.startAuthorization() }
 
     val displayStatusMessage =
         when {
@@ -260,17 +257,17 @@ private fun ModelSelectorScreenPreview() {
                 UiState(
                     models =
                         ModelCatalog.ALL_MODELS.map {
-                            ModelInfo(
-                                config = it,
-                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                                downloadStatus =
-                                    if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) {
-                                        DownloadStatus.Downloading(10f)
-                                    } else {
-                                        DownloadStatus.Completed
-                                    },
-                            )
-                        }
+                                ModelInfo(
+                                    config = it,
+                                    isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                                    downloadStatus =
+                                        if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) {
+                                            DownloadStatus.Downloading(10f)
+                                        } else {
+                                            DownloadStatus.Completed
+                                        },
+                                )
+                            }
                             .toImmutableList(),
                     currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
                     statusMessage = "Downloading model: GEMMA3_1B",

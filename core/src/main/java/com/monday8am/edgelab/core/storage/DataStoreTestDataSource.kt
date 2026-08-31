@@ -18,9 +18,7 @@ class DataStoreTestDataSource(
     private val testsKey = stringPreferencesKey("test_definitions")
 
     override suspend fun getTests(): List<TestCaseDefinition>? {
-        val jsonString = dataStore.data.map { preferences ->
-            preferences[testsKey]
-        }.first()
+        val jsonString = dataStore.data.map { preferences -> preferences[testsKey] }.first()
 
         return if (jsonString != null) {
             try {
@@ -35,8 +33,6 @@ class DataStoreTestDataSource(
 
     override suspend fun saveTests(tests: List<TestCaseDefinition>) {
         val jsonString = json.encodeToString(tests)
-        dataStore.edit { preferences ->
-            preferences[testsKey] = jsonString
-        }
+        dataStore.edit { preferences -> preferences[testsKey] = jsonString }
     }
 }

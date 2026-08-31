@@ -25,7 +25,7 @@ fun AppNavigation(
     ) {
         composable<Route.Playground> {
             PlaygroundScreen(
-                onNavigateToModelSelector = { navController.navigate(Route.ModelSelector) },
+                onNavigateToModelSelector = { navController.navigate(Route.ModelSelector) }
             )
         }
 
@@ -45,15 +45,11 @@ fun AppNavigation(
         }
 
         composable<Route.TestDetails> {
-            TestDetailsScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
+            TestDetailsScreen(onNavigateBack = { navController.popBackStack() })
         }
 
         composable<Route.AuthorManager> {
-            AuthorManagerScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
+            AuthorManagerScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
